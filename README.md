@@ -117,6 +117,7 @@ make smoke
 git add <changed-files>
 git commit -m "T-001: implement task"
 make report TASK=T-001 AGENT=worker-1 STATUS=needs-review
+# Edit queue/reports/T-001_worker-1.md with concrete verification evidence.
 make review TASK=T-001 AGENT=worker-1
 ```
 

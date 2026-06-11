@@ -60,6 +60,7 @@ Use workers when isolation, parallelism, review follow-up, or separate ownership
 - Respect `Allowed paths` and `Do not modify`.
 - Run task-specific verification, `make post-change`, and `make smoke`.
 - Commit the finished task branch before review.
+- Fill the report with summary, changed files, verification commands, results, and evidence before review.
 - Run noninteractive review and handle the result.
 - Report blockers, questions, verification gaps, and memory proposals.
 - Submit memory changes as proposals. Lead edits `docs/MEMORY.md`.
@@ -91,6 +92,7 @@ make smoke
 git add <changed-files>
 git commit -m "<task_id>: <summary>"
 make report TASK=<task_id> AGENT=<agent_id> STATUS=needs-review
+# Edit queue/reports/<task_id>_<agent_id>.md with concrete verification evidence.
 make review TASK=<task_id> AGENT=<agent_id>
 ```
 

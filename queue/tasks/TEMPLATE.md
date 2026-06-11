@@ -31,11 +31,13 @@ Branch: task/worker-1/T-XXX
 - `command`
 - `make post-change`
 - `make smoke`
+- report に summary、changed files、各 command の result/evidence を記録する。
 - `make review TASK=T-XXX AGENT=worker-1`
 
 ## Report
 
 完了時は `queue/reports/T-XXX_worker-1.md` に report を書く。
+`make review` の前に、summary、changed files、verification、post-change、smoke の result/evidence を埋める。
 review 結果は `queue/reviews/T-XXX_worker-1_review.md` を読む。
 統合は lead が `make integrate TASK=T-XXX AGENT=worker-1` で行う。
 

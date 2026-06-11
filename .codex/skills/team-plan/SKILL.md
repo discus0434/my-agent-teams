@@ -22,6 +22,7 @@ description: Use by a lead after the goal is understood and worker delegation is
 - acceptance は report だけで判定できる形にする。
 - verification は担当 agent が実行可能な command にする。
 - worker completion gate として `make post-change`, `make smoke`, `make review` を含める。
+- `make review` 前に report へ summary、changed files、verification result/evidence を書く gate を含める。
 - dependency / integration order があれば明記する。
 
 ## Required Fields
@@ -36,6 +37,7 @@ description: Use by a lead after the goal is understood and worker delegation is
 - Verification
 - Post-change / smoke / review gate
 - Report path
+- Report evidence requirement
 - Memory proposal policy
 
 ## Quality Check
@@ -44,4 +46,5 @@ description: Use by a lead after the goal is understood and worker delegation is
 - 重要 requirement が task か acceptance に対応している。
 - ownership が重ならない。
 - 各 task が検証 command または未検証理由を持つ。
+- report evidence が review 前 gate として明記されている。
 - scope が user request と acceptance に対応している。

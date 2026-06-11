@@ -120,8 +120,11 @@ make smoke
 git add <changed-files>
 git commit -m "<task_id>: <summary>"
 make report TASK=<task_id> AGENT=<agent_id> STATUS=needs-review
+# Edit queue/reports/<task_id>_<agent_id>.md with concrete verification evidence.
 make review TASK=<task_id> AGENT=<agent_id>
 ```
+
+The report must include summary, changed files, task-specific verification, `make post-change`, and `make smoke` evidence before review.
 
 Review handling:
 
