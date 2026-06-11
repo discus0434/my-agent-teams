@@ -35,7 +35,7 @@ if ! tmux has-session -t "$session" 2>/dev/null; then
   die "tmux session is not running: $session"
 fi
 
-prompt="team-bootstrap を開始してください。role=lead agent_id=$lead_id として AGENTS.md に従い、まだ実装や worker dispatch は行わず、まずこの pane のユーザーに、新しいプロジェクトの初期化に必要な最小限の質問をしてください。確認する項目は、何を作るか、使用言語/runtime、deliverable、最初の user-visible behavior、make smoke で確認する動作です。"
+prompt="team-bootstrap を開始してください。role=lead agent_id=$lead_id として AGENTS.md に従い、まだ実装や worker dispatch は行わないでください。一度に質問を並べず、まずこの pane のユーザーに「何を作るか」を1問だけ聞いてください。回答ごとに分かったことを短く反映し、次に必要な1問だけを選んで、協調しながら project shape、stack、entrypoint、make smoke を狭めてください。"
 
 team_tmux_wait_for_ready "$pane" "$cli" 30
 team_tmux_send_text "$pane" "$prompt"

@@ -15,16 +15,25 @@ description: Use by a lead agent when initializing a new project from this templ
 
 ## Ask
 
-Ask only blocking questions.
+Ask one question at a time.
 
-- 何を構築するか。
-- primary language/runtime: Python, TypeScript, both, or another explicit stack。
+- 最初は「何を作るか」を1問だけ聞く。
+- 回答を受けたら、分かったことを短く反映し、次に一番 narrowing value が高い1問だけ聞く。
+- 既存 repo や user request から確定できることは採用し、聞かない。
+- 質問は user が判断しやすい粒度にする。必要なら推奨案を添える。
+- 一度に questionnaire を並べない。
+- implementation や worker dispatch は、bootstrap contract が固まるまで行わない。
+
+必要に応じて次を順番に狭める。
+
+- 何を構築するか、誰が使うか。
 - deliverable: library, CLI, service, app, package, or script。
+- primary language/runtime and standard toolchain。
 - package name, public entrypoints, and first user-visible behavior。
-- `make post-change` で必ず検証したい contract。
 - `make smoke` で確認する代表的な利用者向け動作。
+- `make post-change` に追加したい必須 contract。
 
-既存 repo や user request から確定できることはそのまま採用する。
+十分に固まったら、project shape、stack、entrypoint、`make post-change`、`make smoke` を短くまとめてから初期化する。
 
 ## Contract
 

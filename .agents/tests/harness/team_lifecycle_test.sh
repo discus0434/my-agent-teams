@@ -186,7 +186,7 @@ if ! PATH="$TMP_BASE/bin:$PATH" \
   exit 1
 fi
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
-  *"send-keys"*"team-bootstrap"*"何を作るか"*) ;;
+  *"send-keys"*"team-bootstrap"*"何を作るか"*"1問"*) ;;
   *) echo "bootstrap prompt was not sent to lead" >&2; exit 1 ;;
 esac
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
