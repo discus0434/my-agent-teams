@@ -1,4 +1,34 @@
 .DS_Store
+.env
+.env.*
+!.env.example
+.direnv/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node / TypeScript
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+coverage/
 
 # Runtime queue/state. Keep the directory skeleton in Git, but not live traffic.
 queue/inbox/*
