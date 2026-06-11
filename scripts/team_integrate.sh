@@ -46,6 +46,7 @@ worktree="$(team_task_state_field "$task_id" worktree)"
 branch="$(team_task_state_field "$task_id" branch)"
 base_commit="$(team_task_state_field "$task_id" base_commit)"
 head_commit="$(team_task_state_field "$task_id" head_commit)"
+previous_merge_commit="$(team_task_state_field "$task_id" merge_commit)"
 review_file="$(team_task_state_field "$task_id" review)"
 review_decision="$(team_task_state_field "$task_id" review_decision)"
 
@@ -92,8 +93,18 @@ post_change_log="$TEAM_QUEUE_DIR/integrations/${task_id}_${agent_id}_post-change
 smoke_log="$TEAM_QUEUE_DIR/integrations/${task_id}_${agent_id}_smoke.log"
 lead_base_commit="$(git -C "$TEAM_ROOT" rev-parse HEAD)"
 
-git -C "$TEAM_ROOT" merge --no-ff "$branch" -m "Integrate $task_id from $agent_id" > "$merge_log" 2>&1
-merge_commit="$(git -C "$TEAM_ROOT" rev-parse HEAD)"
+if git -C "$TEAM_ROOT" merge-base --is-ancestor "$branch" HEAD; then
+  [[ -n "$previous_merge_commit" ]] || die "task branch is already merged, but task state is missing merge_commit"
+  merge_commit="$previous_merge_commit"
+  {
+    printf 'Already integrated: %s\n' "$branch"
+    printf 'Recorded merge commit: %s\n' "$merge_commit"
+    printf 'Rerunning integration checks from lead HEAD: %s\n' "$lead_base_commit"
+  } > "$merge_log"
+else
+  git -C "$TEAM_ROOT" merge --no-ff "$branch" -m "Integrate $task_id from $agent_id" > "$merge_log" 2>&1
+  merge_commit="$(git -C "$TEAM_ROOT" rev-parse HEAD)"
+fi
 
 post_change_status=0
 smoke_status=0

@@ -10,10 +10,18 @@
 - `queue/state/tasks/<task_id>.json`: lifecycle state.
 - `queue/state/processed/<agent_id>/<message_id>`: processed inbox marker.
 
+All queue paths are canonical under `TEAM_ROOT`. Worker worktrees may contain an empty or stale `queue/` skeleton; use helper scripts or absolute paths from messages for shared state.
+
 tmux carries only short nudges:
 
 ```text
 inbox <agent_id>
+```
+
+On receipt, the agent runs:
+
+```bash
+./scripts/team_inbox.sh <agent_id>
 ```
 
 ## Human To Lead
@@ -32,6 +40,7 @@ Use mailbox plus tmux nudge for:
 - lead-to-worker task dispatch
 - worker-to-lead questions
 - verifier-to-worker review results
+- direct lightweight requests that do not require claim or integration
 
 ## Identity
 
@@ -95,6 +104,8 @@ Send:
 make team-send TO=<agent_id> TYPE=task_assigned TASK=<task_id>
 make team-status
 ```
+
+For direct lightweight requests without a task file, send `TYPE=note`, `TYPE=retro`, or another explicit type with `TASK=-`. The receiver follows the inbox body and does not claim, commit, review, or integrate unless the body says to create a task.
 
 ## Worker Lifecycle
 

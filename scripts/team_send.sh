@@ -71,9 +71,9 @@ fi
 
 if [[ -z "$body" ]]; then
   if [[ -n "$task_id" && "$task_id" != "-" ]]; then
-    body="queue/tasks/$task_id.md を読んで、完了時は queue/reports/${task_id}_${to}.md に報告してください。"
+    body="$TEAM_QUEUE_DIR/tasks/$task_id.md を読んで、完了時は $TEAM_QUEUE_DIR/reports/${task_id}_${to}.md に報告してください。"
   else
-    body="inbox を確認してください。"
+    body="$TEAM_QUEUE_DIR/inbox/$to.jsonl を確認してください。"
   fi
 fi
 

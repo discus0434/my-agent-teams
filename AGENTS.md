@@ -19,7 +19,9 @@ Read before task work:
 
 1. `docs/TEAM_PROTOCOL.md`
 2. `docs/MEMORY.md`
-3. `queue/tasks/<task_id>.md`
+3. `$TEAM_ROOT/queue/tasks/<task_id>.md`
+
+Queue, inbox, report, review, and integration artifacts live under `TEAM_ROOT`. In a worker worktree, use the helper scripts or absolute paths from messages instead of treating the local `queue/` directory as canonical.
 
 ## Tooling
 
@@ -31,6 +33,7 @@ Read before task work:
 
 - Human users give project instructions directly in the lead tmux pane.
 - Use file mailbox plus tmux nudges for agent-to-agent messages, including lead-to-worker dispatch and worker-to-lead questions.
+- When a pane receives `inbox <agent_id>`, run `./scripts/team_inbox.sh <agent_id>` and process the unread message body from `TEAM_ROOT`.
 
 ## Roles
 
@@ -64,6 +67,8 @@ Use workers when isolation, parallelism, review follow-up, or separate ownership
 - Run noninteractive review and handle the result.
 - Report blockers, questions, verification gaps, and memory proposals.
 - Submit memory changes as proposals. Lead edits `docs/MEMORY.md`.
+
+Direct lightweight requests without a task file, such as `TYPE=retro` or `TYPE=note`, do not use claim, commit, review, or integration. Follow the inbox body, write the requested artifact, and mark the message processed.
 
 ### verifier
 

@@ -38,5 +38,4 @@ if ! tmux has-session -t "$session" 2>/dev/null; then
   exit 1
 fi
 
-tmux send-keys -t "$pane" "inbox $agent_id" Enter
-
+tmux send-keys -t "$pane" C-u "inbox $agent_id" Enter Enter

@@ -68,6 +68,24 @@ fi
 
 head_commit="$(git -C "$abs_worktree" rev-parse HEAD)"
 
+if grep -q '未記入' "$report_file"; then
+  die "report still contains 未記入 placeholders: $report_file"
+fi
+
+for section in "## Verification" "## Post-change" "## Smoke"; do
+  awk -v section="$section" '
+    $0 == section { in_section = 1; next }
+    in_section && /^## / { exit }
+    in_section && /^- Result:[[:space:]]*[^[:space:]]/ { result = 1 }
+    in_section && /^- Evidence:[[:space:]]*[^[:space:]]/ { evidence = 1 }
+    END {
+      if (!in_section || !result || !evidence) {
+        exit 1
+      }
+    }
+  ' "$report_file" || die "report section requires non-empty Result and Evidence before review: $section in $report_file"
+done
+
 output_dir="$(abs_path "$review_output_dir")"
 mkdir -p "$output_dir"
 
@@ -211,7 +229,7 @@ team_write_task_state \
   "$previous_integration" \
   "$decision"
 
-message="Review completed: $summary_file を読んでください。明確に有効な Critical/Major は修正し、修正後に make post-change と make smoke を再実行してください。判断に迷う指摘は lead に相談してください。"
+message="Review Decision: $decision. $summary_file を読んでください。明確に有効な Critical/Major は修正し、修正後に make post-change と make smoke を再実行してください。判断に迷う指摘は lead に相談してください。"
 "$SCRIPT_DIR/team_send.sh" --from verifier "$worker_id" review "$task_id" "$message" >/dev/null
 
 echo "$summary_file"

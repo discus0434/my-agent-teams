@@ -182,6 +182,7 @@ pending_after_mark="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" 
 
 TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-001 worker-1 >/dev/null
 [[ "$(git -C "$worker_1" branch --show-current)" == "task/worker-1/T-001" ]]
+task_base_commit="$(git -C "$worker_1" rev-parse HEAD)"
 if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-001 worker-2 >/dev/null 2>&1; then
   echo "second claim unexpectedly succeeded" >&2
   exit 1
@@ -197,9 +198,75 @@ fi
 
 git -C "$worker_1" add integration-smoke.txt
 git -C "$worker_1" commit -qm "Implement T-001"
+task_head_commit="$(git -C "$worker_1" rev-parse HEAD)"
 report_file="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_report.sh" T-001 worker-1 needs-review)"
 grep -q '^Branch: task/worker-1/T-001$' "$report_file"
 grep -q '^Head commit: ' "$report_file"
+if PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/scripts/team_review.sh" T-001 worker-1 >/dev/null 2>&1; then
+  echo "placeholder report review unexpectedly succeeded" >&2
+  exit 1
+fi
+
+cat > "$report_file" <<REPORT
+# Report: T-001 by worker-1
+
+Status: needs-review
+Branch: task/worker-1/T-001
+Base commit: $task_base_commit
+Head commit: $task_head_commit
+Review: none
+Integration: none
+
+## Summary
+
+- Smoke task change is committed.
+
+## Files changed
+
+- integration-smoke.txt
+
+## Verification
+
+- Command: test -f integration-smoke.txt
+- Result: PASS
+- Evidence: file exists in worker task branch.
+
+## Post-change
+
+- Command: make post-change
+- Result: PASS
+- Evidence: temp post-change target runs shell syntax and diff checks.
+
+## Smoke
+
+- Command: make smoke
+- Result: PASS
+- Evidence: temp smoke target prints temp smoke ok.
+
+## Review
+
+- Command: make review TASK=T-001 AGENT=worker-1
+- Result:
+- Evidence:
+
+## Integration
+
+- Command: make integrate TASK=T-001 AGENT=worker-1
+- Result:
+- Evidence:
+
+## Blockers
+
+- None.
+
+## Questions for lead
+
+- None.
+
+## Memory proposals
+
+- None.
+REPORT
 
 review_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/scripts/team_review.sh" T-001 worker-1)"
 [[ -f "$review_file" ]]
@@ -225,6 +292,14 @@ integration_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG
 [[ -f "$integration_file" ]]
 grep -q '^Status: integrated$' "$integration_file"
 [[ -f "$TMP_ROOT/integration-smoke.txt" ]]
+first_merge_commit="$(sed -n 's/^Merge commit: //p' "$integration_file")"
+[[ -n "$first_merge_commit" ]]
+
+rerun_integration_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_integrate.sh" T-001 worker-1)"
+[[ "$rerun_integration_file" == "$integration_file" ]]
+grep -q '^Status: integrated$' "$integration_file"
+grep -q "^Merge commit: $first_merge_commit$" "$integration_file"
+grep -q '^Already integrated: task/worker-1/T-001$' "$TMP_ROOT/queue/integrations/T-001_worker-1_merge.log"
 
 integrated_status="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_status.sh")"
 case "$integrated_status" in
