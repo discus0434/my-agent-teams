@@ -60,6 +60,10 @@ if [[ "$1" != "exec" ]]; then
   exit 2
 fi
 
+if [[ -n "${TEAM_FAKE_CODEX_SLEEP_SECONDS:-}" ]]; then
+  sleep "$TEAM_FAKE_CODEX_SLEEP_SECONDS"
+fi
+
 output=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -132,6 +136,7 @@ chmod +x "$TMP_BASE/bin/tmux"
 TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" session >/dev/null
 TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" agent worker-1 >/dev/null
 TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" review-field model >/dev/null
+TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" review-field timeout_seconds >/dev/null
 
 identity="$(
   TEAM_ROOT="$TMP_ROOT" \
@@ -371,12 +376,24 @@ Integration: none
 - None.
 REPORT
 
+perl -0pi -e 's/(    timeout_seconds: )\d+/${1}1/' "$TMP_CONFIG_FILE"
+if PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 TEAM_FAKE_CODEX_SLEEP_SECONDS=5 "$TMP_ROOT/.agents/scripts/team_review.sh" T-001 worker-1 >/dev/null 2>&1; then
+  echo "timeout review unexpectedly succeeded" >&2
+  exit 1
+fi
+grep -q 'review command timed out after 1 seconds' "$TMP_ROOT/.agents/queue/reviews/T-001_worker-1_review.exec.log"
+perl -0pi -e 's/(    timeout_seconds: )\d+/${1}180/' "$TMP_CONFIG_FILE"
+
 review_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/.agents/scripts/team_review.sh" T-001 worker-1)"
 [[ -f "$review_file" ]]
 case "$review_file" in
   "$TMP_ROOT/.agents/queue/reviews/T-001_worker-1_review.md") ;;
   *) echo "unexpected review path: $review_file" >&2; exit 1 ;;
 esac
+grep -q '^BEGIN TASK FILE$' "$TMP_ROOT/.agents/queue/reviews/T-001_worker-1_review_prompt.txt"
+grep -q '^BEGIN WORKER REPORT$' "$TMP_ROOT/.agents/queue/reviews/T-001_worker-1_review_prompt.txt"
+grep -q '^BEGIN COMMITTED DIFF$' "$TMP_ROOT/.agents/queue/reviews/T-001_worker-1_review_prompt.txt"
+grep -q 'integration-smoke.txt' "$TMP_ROOT/.agents/queue/reviews/T-001_worker-1_review_prompt.txt"
 
 review_message="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_inbox.sh" worker-1)"
 case "$review_message" in

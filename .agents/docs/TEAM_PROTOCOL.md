@@ -152,12 +152,14 @@ Review handling:
 
 After review, recheck inbox and mark the verifier notification when the review artifact has already been handled.
 
-Review refuses dirty worker worktrees. The review target is the committed diff from task base commit to worker head.
+Review refuses dirty worker worktrees. The review target is the committed diff from task base commit to worker head. The review prompt embeds the task, report, git status, and committed diff; verifier agents should decide from that evidence.
 
 `team.review.cli` supports:
 
 - `claude`: runs `claude --print`.
 - `codex`: runs `codex exec` and writes the final response to the review artifact.
+
+`team.review.timeout_seconds` is required. A timed-out review fails instead of leaving the task in an invisible running state.
 
 ## Integration
 

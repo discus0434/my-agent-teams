@@ -98,7 +98,7 @@ Lead / Worker / Verifier は `.agents/config/agent-team.yaml` で変更できま
 
 - `team.lead`: lead agent の CLI、model、tmux window、起動 command
 - `team.workers`: worker 数、CLI、model、tmux window、worktree path、起動 command
-- `team.review`: verifier の CLI、model、output directory
+- `team.review`: verifier の CLI、model、timeout、output directory
 
 Lead / Worker / Verifier は Claude Code / Codex などに差し替えられます。worker worktree path では `{team_root}` が repository directory name に展開されます。
 

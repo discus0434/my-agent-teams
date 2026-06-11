@@ -28,6 +28,7 @@ worker_role="$(team_config_agent_field "$worker_id" role)"
 review_cli="$(team_config_review_field cli)" || die "team.review.cli is missing in $TEAM_CONFIG_FILE"
 review_model="$(team_config_review_field model)" || die "team.review.model is missing in $TEAM_CONFIG_FILE"
 review_effort="$(team_config_review_field effort)" || die "team.review.effort is missing in $TEAM_CONFIG_FILE"
+review_timeout_seconds="$(team_config_review_field timeout_seconds)" || die "team.review.timeout_seconds is missing in $TEAM_CONFIG_FILE"
 review_output_dir="$(team_config_review_field output_dir)" || die "team.review.output_dir is missing in $TEAM_CONFIG_FILE"
 
 case "$review_cli" in
@@ -35,6 +36,11 @@ case "$review_cli" in
   *) die "unsupported team.review.cli: $review_cli" ;;
 esac
 require_command "$review_cli"
+
+case "$review_timeout_seconds" in
+  ''|*[!0-9]*) die "team.review.timeout_seconds must be a positive integer: $review_timeout_seconds" ;;
+esac
+(( review_timeout_seconds > 0 )) || die "team.review.timeout_seconds must be greater than zero"
 
 ensure_team_dirs
 
@@ -99,12 +105,15 @@ exec_log="$output_dir/${task_id}_${worker_id}_review.exec.log"
 git -C "$abs_worktree" status --short > "$status_file"
 git -C "$abs_worktree" diff --no-ext-diff "$base_commit..$head_commit" -- . > "$committed_diff_file"
 
-cat > "$prompt_file" <<PROMPT
+{
+cat <<PROMPT
 You are a read-only verifier for a tmux-based agent team. Return review only and leave files unchanged.
 
 Review the worker's implementation against the task. The worker is responsible for implementation, post-change checks, smoke checks, and follow-up fixes. Your job is only to review and return findings.
 
-Inputs:
+Use only the embedded evidence below. Do not run commands, do not inspect files, and do not ask another agent.
+
+Paths:
 - Task file: $task_file
 - Worker report: $report_file
 - Worker worktree: $abs_worktree
@@ -141,7 +150,80 @@ Decision: OK | FIX | ASK_LEAD
 Use OK only when there are no Critical or Major issues.
 Use FIX when the worker can make a clear correction within the assigned task.
 Use ASK_LEAD when the remaining decision changes scope, contract, ownership, or user-visible behavior.
+
+## Embedded Evidence
+
+### Task File
+
+BEGIN TASK FILE
 PROMPT
+cat "$task_file"
+cat <<PROMPT
+END TASK FILE
+
+### Worker Report
+
+BEGIN WORKER REPORT
+PROMPT
+cat "$report_file"
+cat <<PROMPT
+END WORKER REPORT
+
+### Git Status Snapshot
+
+BEGIN GIT STATUS
+PROMPT
+cat "$status_file"
+cat <<PROMPT
+END GIT STATUS
+
+### Committed Task Diff
+
+BEGIN COMMITTED DIFF
+PROMPT
+cat "$committed_diff_file"
+cat <<'PROMPT'
+END COMMITTED DIFF
+PROMPT
+} > "$prompt_file"
+
+run_review_command() {
+  local timeout_seconds="$1"
+  local cwd="$2"
+  local stdout_file="$3"
+  local stderr_file="$4"
+  shift 4
+  local pid
+  local elapsed=0
+
+  if [[ "$stdout_file" == "$stderr_file" ]]; then
+    (
+      cd "$cwd"
+      exec "$@"
+    ) > "$stdout_file" 2>&1 &
+  else
+    (
+      cd "$cwd"
+      exec "$@"
+    ) > "$stdout_file" 2> "$stderr_file" &
+  fi
+  pid="$!"
+
+  while kill -0 "$pid" 2>/dev/null; do
+    if (( elapsed >= timeout_seconds )); then
+      printf '[team] review command timed out after %s seconds\n' "$timeout_seconds" >> "$stderr_file"
+      kill "$pid" 2>/dev/null || true
+      sleep 1
+      kill -9 "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  wait "$pid"
+}
 
 status=0
 prompt="$(<"$prompt_file")"
@@ -153,14 +235,10 @@ case "$review_cli" in
       --model "$review_model"
       --permission-mode bypassPermissions
       --output-format text
-      --add-dir "$TEAM_ROOT"
-      --add-dir "$abs_worktree"
+      --no-session-persistence
       "$prompt"
     )
-    (
-      cd "$abs_worktree"
-      CLAUDE_CODE_EFFORT_LEVEL="$review_effort" "${cmd[@]}"
-    ) > "$raw_file" 2> "$exec_log" || status=$?
+    run_review_command "$review_timeout_seconds" "$abs_worktree" "$raw_file" "$exec_log" env CLAUDE_CODE_EFFORT_LEVEL="$review_effort" "${cmd[@]}" || status=$?
     ;;
   codex)
     cmd=(
@@ -169,12 +247,11 @@ case "$review_cli" in
       --model "$review_model"
       --dangerously-bypass-approvals-and-sandbox
       --cd "$abs_worktree"
-      --add-dir "$TEAM_ROOT"
       -c "model_reasoning_effort=\"$review_effort\""
       --output-last-message "$raw_file"
       "$prompt"
     )
-    "${cmd[@]}" > "$exec_log" 2>&1 || status=$?
+    run_review_command "$review_timeout_seconds" "$TEAM_ROOT" "$exec_log" "$exec_log" "${cmd[@]}" || status=$?
     ;;
 esac
 

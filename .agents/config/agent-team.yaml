@@ -38,4 +38,5 @@ team:
     cli: claude
     model: claude-opus-4-8
     effort: medium
+    timeout_seconds: 180
     output_dir: .agents/queue/reviews
