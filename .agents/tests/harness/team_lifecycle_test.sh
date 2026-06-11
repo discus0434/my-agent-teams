@@ -17,6 +17,12 @@ cp "$ROOT/.gitignore" "$TMP_ROOT/.gitignore"
 cp "$ROOT/AGENTS.md" "$TMP_ROOT/AGENTS.md"
 cp -P "$ROOT/CLAUDE.md" "$TMP_ROOT/CLAUDE.md"
 
+expanded_worker_path="$(
+  TEAM_ROOT="$TMP_ROOT" \
+  bash -c 'source "$1"; abs_path "../{team_root}-worktrees/worker-1"' _ "$TMP_ROOT/.agents/scripts/team_common.sh"
+)"
+[[ "$expanded_worker_path" == "$TMP_ROOT/../repo-worktrees/worker-1" ]]
+
 mkdir -p \
   "$TMP_ROOT/.agents/queue/tasks" \
   "$TMP_ROOT/.agents/queue/inbox" \
@@ -38,7 +44,7 @@ smoke:
 	@echo "temp smoke ok"
 MAKE
 
-perl -0pi -e 's#\.\./customizable-agent-teams-worktrees/#../worktrees/#g' "$TMP_CONFIG_FILE"
+perl -0pi -e 's#\.\./\{team_root\}-worktrees/#../worktrees/#g' "$TMP_CONFIG_FILE"
 perl -0pi -e 's/(  review:\n    cli: )claude/${1}codex/; s/(  review:\n    cli: codex\n    model: )claude-opus-4-8/${1}gpt-5.5/' "$TMP_CONFIG_FILE"
 mkdir -p "$TMP_BASE/bin"
 

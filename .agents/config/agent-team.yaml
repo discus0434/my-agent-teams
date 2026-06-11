@@ -18,21 +18,21 @@ team:
       cli: codex
       model: gpt-5.5
       window: worker-1
-      worktree: ../customizable-agent-teams-worktrees/worker-1
+      worktree: ../{team_root}-worktrees/worker-1
       command: codex --dangerously-bypass-approvals-and-sandbox --model gpt-5.5
     - id: worker-2
       role: worker
       cli: codex
       model: gpt-5.5
       window: worker-2
-      worktree: ../customizable-agent-teams-worktrees/worker-2
+      worktree: ../{team_root}-worktrees/worker-2
       command: codex --dangerously-bypass-approvals-and-sandbox --model gpt-5.5
     - id: worker-3
       role: worker
       cli: codex
       model: gpt-5.5
       window: worker-3
-      worktree: ../customizable-agent-teams-worktrees/worker-3
+      worktree: ../{team_root}-worktrees/worker-3
       command: codex --dangerously-bypass-approvals-and-sandbox --model gpt-5.5
   review:
     cli: claude

@@ -54,6 +54,8 @@ ensure_agent_worktree() {
   fi
 
   if [[ -d "$abs_worktree/.git" || -f "$abs_worktree/.git" ]]; then
+    git -C "$abs_worktree" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "$abs_worktree exists but is not a valid git worktree"
+
     local current_branch
     current_branch="$(git -C "$abs_worktree" branch --show-current)"
     if [[ "$current_branch" == "$branch" ]]; then

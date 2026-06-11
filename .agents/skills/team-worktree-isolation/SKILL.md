@@ -8,7 +8,8 @@ description: Use only when starting, inspecting, debugging, or repairing repo-ex
 ## Standard
 
 - worker worktree は repo 外に置く。
-- default: `../customizable-agent-teams-worktrees/<agent_id>`
+- default: `../{team_root}-worktrees/<agent_id>`
+- `{team_root}` は repository directory name に展開される。
 - repo 内 `worktrees/` は使わない。
 - parking branch: `agent/<agent_id>`
 - task branch: `task/<agent_id>/<task_id>`

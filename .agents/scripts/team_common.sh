@@ -157,8 +157,23 @@ shell_quote() {
   printf '%q' "$1"
 }
 
-abs_path() {
+team_root_name() {
+  basename "$TEAM_ROOT"
+}
+
+team_expand_path() {
   local path="$1"
+  local root_name
+
+  root_name="$(team_root_name)"
+  path="${path//\{team_root\}/$root_name}"
+  printf '%s\n' "$path"
+}
+
+abs_path() {
+  local path
+
+  path="$(team_expand_path "$1")"
   if [[ "$path" == /* ]]; then
     printf '%s\n' "$path"
   else
