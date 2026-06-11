@@ -96,7 +96,7 @@ git add .
 git commit -m "Bootstrap project"
 ```
 
-bootstrap が終わったプロジェクトでは `.codex/skills/team-bootstrap/` を削除します。
+bootstrap が終わったプロジェクトでは `.agents/skills/team-bootstrap/` を削除します。
 
 ## Start A Team
 
@@ -193,7 +193,8 @@ Harness tests live in `.agents/tests/harness/`.
 
 - `AGENTS.md`: 全 agent 共通の作業ルール
 - `CLAUDE.md`: `AGENTS.md` への symlink
-- `.codex/skills/`: Codex / Claude Code 共通 skill
+- `.agents/skills/`: Codex / Claude Code 共通 skill
+- `.codex/skills`: `.agents/skills` への symlink
 - `.claude/skills`: `.codex/skills` への symlink
 - `.agents/config/agent-team.yaml`: role、model、起動 command、worktree 設定
 - `.agents/docs/TEAM_PROTOCOL.md`: task、report、review、integration の詳細手順

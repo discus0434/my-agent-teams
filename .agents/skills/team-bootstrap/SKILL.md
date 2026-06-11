@@ -169,5 +169,5 @@ post-change: post-change-py post-change-ts
 - Run `make smoke`.
 - package/app build が成果物に必要なら、build command が `make post-change` に含まれていることを確認する。
 - Confirm `README.md`, `AGENTS.md`, `Makefile`, package metadata, and `.agents/config/agent-team.yaml` no longer contain stale template names or unused stack commands.
-- Delete `.codex/skills/team-bootstrap/` after bootstrap is complete.
+- Delete `.agents/skills/team-bootstrap/` after bootstrap is complete.
 - Dispatch implementation tasks only after the bootstrap checks pass.
