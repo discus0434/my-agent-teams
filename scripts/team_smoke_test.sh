@@ -12,10 +12,19 @@ mkdir -p "$TMP_ROOT"
 cp -R "$ROOT/scripts" "$TMP_ROOT/scripts"
 cp -R "$ROOT/config" "$TMP_ROOT/config"
 cp -R "$ROOT/docs" "$TMP_ROOT/docs"
-cp -R "$ROOT/queue" "$TMP_ROOT/queue"
 cp "$ROOT/.gitignore" "$TMP_ROOT/.gitignore"
 cp "$ROOT/AGENTS.md" "$TMP_ROOT/AGENTS.md"
 cp -P "$ROOT/CLAUDE.md" "$TMP_ROOT/CLAUDE.md"
+
+mkdir -p \
+  "$TMP_ROOT/queue/tasks" \
+  "$TMP_ROOT/queue/inbox" \
+  "$TMP_ROOT/queue/reports" \
+  "$TMP_ROOT/queue/reviews" \
+  "$TMP_ROOT/queue/integrations" \
+  "$TMP_ROOT/queue/memory_proposals" \
+  "$TMP_ROOT/queue/state"
+cp "$ROOT/queue/tasks/TEMPLATE.md" "$TMP_ROOT/queue/tasks/TEMPLATE.md"
 
 cat > "$TMP_ROOT/Makefile" <<'MAKE'
 .PHONY: post-change smoke
