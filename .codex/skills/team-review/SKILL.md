@@ -7,10 +7,10 @@ description: Use only when a verifier result is ambiguous, disputed, or says ASK
 
 ## Inputs
 
-- `queue/tasks/<task_id>.md`
-- `queue/reports/<task_id>_<agent_id>.md`
-- `queue/reviews/<task_id>_<agent_id>_review.md`
-- `docs/MEMORY.md`
+- `.agents/queue/tasks/<task_id>.md`
+- `.agents/queue/reports/<task_id>_<agent_id>.md`
+- `.agents/queue/reviews/<task_id>_<agent_id>_review.md`
+- `.agents/docs/MEMORY.md`
 
 ## Worker Handling
 
@@ -21,7 +21,7 @@ description: Use only when a verifier result is ambiguous, disputed, or says ASK
 ## Lead Handling
 
 - worker の相談に対して、fix / accept risk / split task を決める。
-- 統合判断は `make integrate` と `docs/TEAM_PROTOCOL.md` の Integration gate で行う。
+- 統合判断は `make integrate` と `.agents/docs/TEAM_PROTOCOL.md` の Integration gate で行う。
 - review result だけで統合せず、worker report、state、verification evidence も見る。
 
 ## Decision

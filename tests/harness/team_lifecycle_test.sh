@@ -2,29 +2,30 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TMP_BASE="$(mktemp -d)"
 TMP_ROOT="$TMP_BASE/repo"
-TMP_CONFIG_FILE="$TMP_ROOT/config/agent-team.yaml"
+TMP_CONFIG_FILE="$TMP_ROOT/.agents/config/agent-team.yaml"
 trap 'rm -rf "$TMP_BASE"' EXIT
 
 mkdir -p "$TMP_ROOT"
 cp -R "$ROOT/scripts" "$TMP_ROOT/scripts"
-cp -R "$ROOT/config" "$TMP_ROOT/config"
-cp -R "$ROOT/docs" "$TMP_ROOT/docs"
+mkdir -p "$TMP_ROOT/.agents"
+cp -R "$ROOT/.agents/config" "$TMP_ROOT/.agents/config"
+cp -R "$ROOT/.agents/docs" "$TMP_ROOT/.agents/docs"
 cp "$ROOT/.gitignore" "$TMP_ROOT/.gitignore"
 cp "$ROOT/AGENTS.md" "$TMP_ROOT/AGENTS.md"
 cp -P "$ROOT/CLAUDE.md" "$TMP_ROOT/CLAUDE.md"
 
 mkdir -p \
-  "$TMP_ROOT/queue/tasks" \
-  "$TMP_ROOT/queue/inbox" \
-  "$TMP_ROOT/queue/reports" \
-  "$TMP_ROOT/queue/reviews" \
-  "$TMP_ROOT/queue/integrations" \
-  "$TMP_ROOT/queue/memory_proposals" \
-  "$TMP_ROOT/queue/state"
-cp "$ROOT/queue/tasks/TEMPLATE.md" "$TMP_ROOT/queue/tasks/TEMPLATE.md"
+  "$TMP_ROOT/.agents/queue/tasks" \
+  "$TMP_ROOT/.agents/queue/inbox" \
+  "$TMP_ROOT/.agents/queue/reports" \
+  "$TMP_ROOT/.agents/queue/reviews" \
+  "$TMP_ROOT/.agents/queue/integrations" \
+  "$TMP_ROOT/.agents/queue/memory_proposals" \
+  "$TMP_ROOT/.agents/queue/state"
+cp "$ROOT/.agents/queue/tasks/TEMPLATE.md" "$TMP_ROOT/.agents/queue/tasks/TEMPLATE.md"
 
 cat > "$TMP_ROOT/Makefile" <<'MAKE'
 .PHONY: post-change smoke
@@ -194,11 +195,11 @@ fi
 [[ "$(git -C "$worker_1" rev-parse HEAD)" == "$(git -C "$TMP_ROOT" rev-parse HEAD)" ]]
 [[ -f "$worker_1/root-update.txt" ]]
 
-cp "$TMP_ROOT/queue/tasks/TEMPLATE.md" "$TMP_ROOT/queue/tasks/T-001.md"
-perl -0pi -e 's/T-XXX/T-001/g' "$TMP_ROOT/queue/tasks/T-001.md"
+cp "$TMP_ROOT/.agents/queue/tasks/TEMPLATE.md" "$TMP_ROOT/.agents/queue/tasks/T-001.md"
+perl -0pi -e 's/T-XXX/T-001/g' "$TMP_ROOT/.agents/queue/tasks/T-001.md"
 
-cp "$TMP_ROOT/queue/tasks/TEMPLATE.md" "$TMP_ROOT/queue/tasks/T-BAD.md"
-perl -0pi -e 's/T-XXX/T-BAD/g; s#Branch: task/worker-1/T-BAD#Branch: task/worker-1/wrong#' "$TMP_ROOT/queue/tasks/T-BAD.md"
+cp "$TMP_ROOT/.agents/queue/tasks/TEMPLATE.md" "$TMP_ROOT/.agents/queue/tasks/T-BAD.md"
+perl -0pi -e 's/T-XXX/T-BAD/g; s#Branch: task/worker-1/T-BAD#Branch: task/worker-1/wrong#' "$TMP_ROOT/.agents/queue/tasks/T-BAD.md"
 if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-BAD worker-1 >/dev/null 2>&1; then
   echo "branch mismatch claim unexpectedly succeeded" >&2
   exit 1
@@ -313,7 +314,7 @@ REPORT
 review_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/scripts/team_review.sh" T-001 worker-1)"
 [[ -f "$review_file" ]]
 case "$review_file" in
-  "$TMP_ROOT/queue/reviews/T-001_worker-1_review.md") ;;
+  "$TMP_ROOT/.agents/queue/reviews/T-001_worker-1_review.md") ;;
   *) echo "unexpected review path: $review_file" >&2; exit 1 ;;
 esac
 
@@ -341,7 +342,7 @@ rerun_integration_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_
 [[ "$rerun_integration_file" == "$integration_file" ]]
 grep -q '^Status: integrated$' "$integration_file"
 grep -q "^Merge commit: $first_merge_commit$" "$integration_file"
-grep -q '^Already integrated: task/worker-1/T-001$' "$TMP_ROOT/queue/integrations/T-001_worker-1_merge.log"
+grep -q '^Already integrated: task/worker-1/T-001$' "$TMP_ROOT/.agents/queue/integrations/T-001_worker-1_merge.log"
 
 integrated_status="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_status.sh")"
 case "$integrated_status" in

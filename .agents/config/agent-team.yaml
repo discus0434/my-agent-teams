@@ -38,4 +38,4 @@ team:
     cli: claude
     model: claude-opus-4-8
     effort: medium
-    output_dir: queue/reviews
+    output_dir: .agents/queue/reviews

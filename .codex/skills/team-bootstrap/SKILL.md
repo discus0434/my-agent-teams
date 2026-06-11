@@ -1,6 +1,6 @@
 ---
 name: team-bootstrap
-description: Use by a lead agent when initializing a new project from this template, before direct implementation or worker dispatch, to decide the product shape and language stack with the user and configure packaging, format, lint, test, and make post-change.
+description: Use by a lead agent when initializing a new project from this template, before direct implementation or worker dispatch, to decide product shape and stack, initialize project-facing docs and metadata, and configure packaging, format, lint, test, make post-change, and make smoke.
 ---
 
 # team-bootstrap
@@ -8,8 +8,9 @@ description: Use by a lead agent when initializing a new project from this templ
 ## Inspect
 
 - `AGENTS.md`
+- `README.md`
 - `Makefile`
-- `docs/TEAM_PROTOCOL.md`
+- `.agents/docs/TEAM_PROTOCOL.md`
 - existing project files: `pyproject.toml`, `package.json`, `pnpm-workspace.yaml`, `src/`, `tests/`
 
 ## Ask
@@ -21,6 +22,7 @@ Ask only blocking questions.
 - deliverable: library, CLI, service, app, package, or script。
 - package name, public entrypoints, and first user-visible behavior。
 - `make post-change` で必ず検証したい contract。
+- `make smoke` で確認する代表的な利用者向け動作。
 
 既存 repo や user request から確定できることはそのまま採用する。
 
@@ -30,11 +32,23 @@ Ask only blocking questions.
 - 対象 stack の標準的な package manager、formatter、linter、test runner、必要な build/package command を入れて初期化する。
 - `make post-change` は format、lint、必要な type/package/build check、test、`git diff --check -- .` を含める。
 - 既存の repo-level checks がある場合は `post-change` に残す。
-- `make smoke` は runtime smoke または agent-team smoke に使う。language checks だけを `smoke` に置かない。
+- `make smoke` は代表的な利用者向け動作を短時間で実行する command にする。
 - 選ばなかった言語や未使用 scaffold は残さない。
 - `AGENTS.md` には選んだ stack の command だけを書く。
 - 必要な package manager lockfile を作る。
 - 必須 tool が無い場合は blocker として扱う。
+
+## Initialize Template Surfaces
+
+bootstrap では、template の初期記述を実プロジェクトの contract に置き換える。
+
+- `README.md`: project name、目的、install、run command、`make post-change`、`make smoke`、主要 entrypoint。
+- `AGENTS.md`: 選んだ stack の command、package dir、test/smoke 期待値、ownership note。
+- `Makefile`: project の `post-change` と `smoke`。
+- package metadata: package name、version、description、entrypoint、build backend、lockfile。
+- `.agents/config/agent-team.yaml`: default が合わない場合の team name、tmux session、model、command、worktree path。
+
+project-facing docs から、古い example、toy name、未使用 stack command、template 固有の文言を消す。
 
 Python and TypeScript below are examples of this rule, not the only supported stacks.
 
@@ -124,7 +138,7 @@ For a package/app build contract, add `$(PNPM) -s build` to `post-change-ts`.
 - Choose the stack's normal package manager, formatter, linter, test runner, and build/package command.
 - Initialize real project metadata, dependency files, source layout, tests, and lockfiles for that stack.
 - Wire the selected tools into `make post-change`.
-- Put only runtime or end-to-end smoke in `make smoke`.
+- Define `make smoke` as a short user-visible behavior check.
 - Update `AGENTS.md` and `README.md` with the actual selected commands.
 - Keep only examples and scaffold for the selected stack.
 - 必須 command が無い場合は失敗させる。
@@ -155,6 +169,6 @@ post-change: post-change-py post-change-ts
 - Run `make post-change`.
 - Run `make smoke`.
 - package/app build が成果物に必要なら、build command が `make post-change` に含まれていることを確認する。
-- Update `AGENTS.md` and `README.md` with actual commands only.
+- Confirm `README.md`, `AGENTS.md`, `Makefile`, package metadata, and `.agents/config/agent-team.yaml` no longer contain stale template names or unused stack commands.
 - Delete `.codex/skills/team-bootstrap/` after bootstrap is complete.
 - Dispatch implementation tasks only after the bootstrap checks pass.

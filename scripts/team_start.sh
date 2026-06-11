@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
       cat <<'USAGE'
 usage: team_start.sh [--restart] [--skip-worktrees]
 
-Starts the tmux session described in config/agent-team.yaml.
+Starts the tmux session described in .agents/config/agent-team.yaml.
 USAGE
       exit 0
       ;;

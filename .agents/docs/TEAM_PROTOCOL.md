@@ -2,15 +2,15 @@
 
 ## Artifacts
 
-- `queue/tasks/<task_id>.md`: task body.
-- `queue/inbox/<agent_id>.jsonl`: agent messages.
-- `queue/reports/<task_id>_<agent_id>.md`: worker report.
-- `queue/reviews/<task_id>_<agent_id>_review.md`: verifier result.
-- `queue/integrations/<task_id>_<agent_id>.md`: lead integration result.
-- `queue/state/tasks/<task_id>.json`: lifecycle state.
-- `queue/state/processed/<agent_id>/<message_id>`: processed inbox marker.
+- `.agents/queue/tasks/<task_id>.md`: task body.
+- `.agents/queue/inbox/<agent_id>.jsonl`: agent messages.
+- `.agents/queue/reports/<task_id>_<agent_id>.md`: worker report.
+- `.agents/queue/reviews/<task_id>_<agent_id>_review.md`: verifier result.
+- `.agents/queue/integrations/<task_id>_<agent_id>.md`: lead integration result.
+- `.agents/queue/state/tasks/<task_id>.json`: lifecycle state.
+- `.agents/queue/state/processed/<agent_id>/<message_id>`: processed inbox marker.
 
-All queue paths are canonical under `TEAM_ROOT`. Worker worktrees may contain an empty or stale `queue/` skeleton; use helper scripts or absolute paths from messages for shared state.
+All queue paths are canonical under `TEAM_ROOT`. Worker worktrees may contain an empty or stale `.agents/queue/` skeleton; use helper scripts or absolute paths from messages for shared state.
 
 tmux carries only short nudges:
 
@@ -78,7 +78,7 @@ Git cannot store both `agent/<agent_id>` and `agent/<agent_id>/<task_id>` as bra
 
 ## Lead Direct Work
 
-Lead may work directly when the change is small, single-owner, and not worth a queue/report/review cycle.
+Lead may work directly when the change is small, single-owner, and not worth a task/report/review cycle.
 
 Direct work gate:
 
@@ -91,7 +91,7 @@ Run task-specific checks before `make post-change` when they exist.
 
 ## Task Dispatch
 
-Create a task from `queue/tasks/TEMPLATE.md`.
+Create a task from `.agents/queue/tasks/TEMPLATE.md`.
 
 Required fields:
 
@@ -138,7 +138,7 @@ make smoke
 git add <changed-files>
 git commit -m "<task_id>: <summary>"
 make report TASK=<task_id> AGENT=<agent_id> STATUS=needs-review
-# Edit queue/reports/<task_id>_<agent_id>.md with concrete verification evidence.
+# Edit .agents/queue/reports/<task_id>_<agent_id>.md with concrete verification evidence.
 make review TASK=<task_id> AGENT=<agent_id>
 ```
 
@@ -188,19 +188,19 @@ make smoke
 Result is written to:
 
 ```text
-queue/integrations/<task_id>_<agent_id>.md
+.agents/queue/integrations/<task_id>_<agent_id>.md
 ```
 
 If merge or checks fail, the task remains unintegrated. Lead fixes the root state or sends a follow-up task to the worker.
 
 ## Memory
 
-Workers submit memory proposals. Lead edits `docs/MEMORY.md`.
+Workers submit memory proposals. Lead edits `.agents/docs/MEMORY.md`.
 
 Memory proposal path:
 
 ```text
-queue/memory_proposals/<task_id>_<agent_id>_<short-slug>.md
+.agents/queue/memory_proposals/<task_id>_<agent_id>_<short-slug>.md
 ```
 
-Lead reviews proposals and edits `docs/MEMORY.md` only when the lesson is durable, sourced, non-secret, and not a duplicate.
+Lead reviews proposals and edits `.agents/docs/MEMORY.md` only when the lesson is durable, sourced, non-secret, and not a duplicate.

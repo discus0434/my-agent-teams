@@ -4,8 +4,8 @@ set -euo pipefail
 
 TEAM_COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEAM_ROOT="${TEAM_ROOT:-$(cd "$TEAM_COMMON_DIR/.." && pwd)}"
-TEAM_CONFIG_FILE="${TEAM_CONFIG_FILE:-$TEAM_ROOT/config/agent-team.yaml}"
-TEAM_QUEUE_DIR="${TEAM_QUEUE_DIR:-$TEAM_ROOT/queue}"
+TEAM_CONFIG_FILE="${TEAM_CONFIG_FILE:-$TEAM_ROOT/.agents/config/agent-team.yaml}"
+TEAM_QUEUE_DIR="${TEAM_QUEUE_DIR:-$TEAM_ROOT/.agents/queue}"
 TEAM_STATE_DIR="${TEAM_STATE_DIR:-$TEAM_QUEUE_DIR/state}"
 
 die() {

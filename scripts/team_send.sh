@@ -13,7 +13,7 @@ usage:
 
 examples:
   team_send.sh worker-1 task_assigned T-001
-  team_send.sh --from verifier worker-1 review T-001 "queue/reviews/... を確認してください。"
+  team_send.sh --from verifier worker-1 review T-001 ".agents/queue/reviews/... を確認してください。"
 USAGE
 }
 

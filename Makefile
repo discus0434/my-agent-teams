@@ -1,11 +1,16 @@
-.PHONY: post-change smoke team-start team-stop team-status team-send team-submit inbox claim report review integrate
+.PHONY: post-change smoke harness-test team-start team-stop team-status team-send team-submit inbox claim report review integrate
 
 post-change:
 	@bash -n scripts/*.sh
+	@bash -n tests/harness/*.sh
 	@git diff --check -- .
 
 smoke:
-	./scripts/team_smoke_test.sh
+	@echo "Define project smoke during team-bootstrap." >&2
+	@exit 1
+
+harness-test:
+	./tests/harness/team_lifecycle_test.sh
 
 team-start:
 	./scripts/team_start.sh --restart

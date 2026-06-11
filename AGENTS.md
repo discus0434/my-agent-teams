@@ -17,17 +17,22 @@ Primary identity:
 
 Read before task work:
 
-1. `docs/TEAM_PROTOCOL.md`
-2. `docs/MEMORY.md`
-3. `$TEAM_ROOT/queue/tasks/<task_id>.md`
+1. `.agents/docs/TEAM_PROTOCOL.md`
+2. `.agents/docs/MEMORY.md`
+3. `$TEAM_ROOT/.agents/queue/tasks/<task_id>.md`
 
-Queue, inbox, report, review, and integration artifacts live under `TEAM_ROOT`. In a worker worktree, use the helper scripts or absolute paths from messages instead of treating the local `queue/` directory as canonical.
+Queue, inbox, report, review, and integration artifacts live under `TEAM_ROOT`. In a worker worktree, use the helper scripts or absolute paths from messages instead of treating the local `.agents/queue/` directory as canonical.
 
 ## Tooling
 
 - Use `gh` for GitHub operations such as PR creation, PR status, issue comments, review comments, and CI inspection.
 - When repository environment variables must be loaded, run commands through `direnv exec . <command>`.
 - Missing required tools are blockers. Report the missing command.
+
+## Verification
+
+- `make post-change` is the required change gate.
+- `make smoke` confirms the user-visible behavior selected during bootstrap.
 
 ## User Interface
 
@@ -45,7 +50,7 @@ Queue, inbox, report, review, and integration artifacts live under `TEAM_ROOT`. 
 - Dispatch tasks with `make team-send`.
 - Decide worker questions after review.
 - Integrate only `done` reports with `OK` reviews.
-- Edit `docs/MEMORY.md` after reviewing memory proposals.
+- Edit `.agents/docs/MEMORY.md` after reviewing memory proposals.
 
 Direct work is allowed when ownership is clear, the change is small, and lead can run the relevant task-specific checks plus:
 
@@ -67,7 +72,7 @@ Use workers when isolation, parallelism, review follow-up, or separate ownership
 - Fill the report with summary, changed files, verification commands, results, and evidence before review.
 - Run noninteractive review and handle the result.
 - Report blockers, questions, verification gaps, and memory proposals.
-- Submit memory changes as proposals. Lead edits `docs/MEMORY.md`.
+- Submit memory changes as proposals. Lead edits `.agents/docs/MEMORY.md`.
 
 Direct lightweight requests without a task file, such as `TYPE=retro` or `TYPE=note`, do not use claim, commit, review, or integration. Follow the inbox body, write the requested artifact, and mark the message processed.
 
@@ -98,7 +103,7 @@ make smoke
 git add <changed-files>
 git commit -m "<task_id>: <summary>"
 make report TASK=<task_id> AGENT=<agent_id> STATUS=needs-review
-# Edit queue/reports/<task_id>_<agent_id>.md with concrete verification evidence.
+# Edit .agents/queue/reports/<task_id>_<agent_id>.md with concrete verification evidence.
 make review TASK=<task_id> AGENT=<agent_id>
 ```
 
@@ -140,10 +145,10 @@ Integration requires:
 - clean lead worktree
 - unchanged worker head since report
 
-`make integrate` performs a `--no-ff` merge, runs `make post-change` and `make smoke`, and writes `queue/integrations/<task_id>_<agent_id>.md`.
+`make integrate` performs a `--no-ff` merge, runs `make post-change` and `make smoke`, and writes `.agents/queue/integrations/<task_id>_<agent_id>.md`.
 
 ## Memory
 
-- Lead is the only editor of `docs/MEMORY.md`.
-- Workers write durable lessons to `queue/memory_proposals/`.
+- Lead is the only editor of `.agents/docs/MEMORY.md`.
+- Workers write durable lessons to `.agents/queue/memory_proposals/`.
 - Store only lessons that will change future agent behavior.

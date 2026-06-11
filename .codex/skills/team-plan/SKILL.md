@@ -7,9 +7,9 @@ description: Use by a lead after the goal is understood and worker delegation is
 
 ## Inputs
 
-- `docs/TEAM_PROTOCOL.md`
-- `docs/MEMORY.md`
-- `queue/tasks/TEMPLATE.md` if needed
+- `.agents/docs/TEAM_PROTOCOL.md`
+- `.agents/docs/MEMORY.md`
+- `.agents/queue/tasks/TEMPLATE.md` if needed
 
 ## Split Rules
 
