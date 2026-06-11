@@ -38,12 +38,35 @@ ensure_agent_worktree() {
   local worktree="$2"
   local abs_worktree
   abs_worktree="$(abs_path "$worktree")"
+  local branch="agent/$agent_id"
 
   if [[ "$worktree" == "." ]]; then
     return 0
   fi
 
+  if ! git -C "$TEAM_ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then
+    die "git HEAD does not exist yet. Commit the template once before creating agent worktrees, or rerun with --skip-worktrees."
+  fi
+
   if [[ -d "$abs_worktree/.git" || -f "$abs_worktree/.git" ]]; then
+    local current_branch
+    current_branch="$(git -C "$abs_worktree" branch --show-current)"
+    if [[ "$current_branch" == "$branch" ]]; then
+      if ! team_git_is_clean "$abs_worktree"; then
+        team_git_dirty_summary "$abs_worktree" >&2
+        die "parking worktree must be clean before start: $abs_worktree"
+      fi
+      local root_head worker_head
+      root_head="$(git -C "$TEAM_ROOT" rev-parse HEAD)"
+      worker_head="$(git -C "$abs_worktree" rev-parse HEAD)"
+      if [[ "$worker_head" != "$root_head" ]]; then
+        if git -C "$abs_worktree" merge-base --is-ancestor HEAD "$root_head"; then
+          git -C "$abs_worktree" merge --ff-only "$root_head" >/dev/null
+        else
+          die "parking branch $branch cannot fast-forward to lead HEAD"
+        fi
+      fi
+    fi
     return 0
   fi
 
@@ -53,12 +76,7 @@ ensure_agent_worktree() {
     fi
   fi
 
-  if ! git -C "$TEAM_ROOT" rev-parse --verify HEAD >/dev/null 2>&1; then
-    die "git HEAD does not exist yet. Commit the template once before creating agent worktrees, or rerun with --skip-worktrees."
-  fi
-
   mkdir -p "$(dirname "$abs_worktree")"
-  local branch="agent/$agent_id"
 
   if git -C "$TEAM_ROOT" show-ref --verify --quiet "refs/heads/$branch"; then
     git -C "$TEAM_ROOT" worktree add "$abs_worktree" "$branch"

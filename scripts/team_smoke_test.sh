@@ -140,6 +140,13 @@ worker_1="$TMP_BASE/worktrees/worker-1"
 [[ -d "$worker_1/.git" || -f "$worker_1/.git" ]]
 [[ "$(git -C "$worker_1" branch --show-current)" == "agent/worker-1" ]]
 
+printf '%s\n' "root update" > "$TMP_ROOT/root-update.txt"
+git -C "$TMP_ROOT" add root-update.txt
+git -C "$TMP_ROOT" commit -qm "Root update"
+PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/scripts/team_start.sh" --restart >/dev/null
+[[ "$(git -C "$worker_1" rev-parse HEAD)" == "$(git -C "$TMP_ROOT" rev-parse HEAD)" ]]
+[[ -f "$worker_1/root-update.txt" ]]
+
 cp "$TMP_ROOT/queue/tasks/TEMPLATE.md" "$TMP_ROOT/queue/tasks/T-001.md"
 perl -0pi -e 's/T-XXX/T-001/g' "$TMP_ROOT/queue/tasks/T-001.md"
 
