@@ -40,6 +40,17 @@ team_tmux_cancel_mode_if_needed() {
   fi
 }
 
+team_tmux_submit() {
+  local pane="$1"
+  local count="${2:-3}"
+  local _index
+
+  for _index in $(seq 1 "$count"); do
+    tmux send-keys -t "$pane" C-m
+    sleep 0.2
+  done
+}
+
 team_tmux_send_text() {
   local pane="$1"
   local text="$2"
@@ -47,7 +58,7 @@ team_tmux_send_text() {
   team_tmux_cancel_mode_if_needed "$pane"
   tmux send-keys -t "$pane" C-u
   tmux send-keys -t "$pane" -l "$text"
-  tmux send-keys -t "$pane" C-m
+  team_tmux_submit "$pane"
 }
 
 team_tmux_content_is_ready() {
@@ -81,7 +92,7 @@ team_tmux_accept_startup_prompt() {
     content="$(team_tmux_capture_pane "$pane")"
     if printf '%s\n' "$content" | grep -Eq 'Do you trust the contents of this directory|Press enter to continue|Quick safety check: Is this a project you created or one you trust|Enter to confirm'; then
       team_tmux_cancel_mode_if_needed "$pane"
-      tmux send-keys -t "$pane" C-m
+      team_tmux_submit "$pane"
       sleep 1
       return 0
     fi

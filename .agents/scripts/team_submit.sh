@@ -31,4 +31,4 @@ if ! tmux has-session -t "$session" 2>/dev/null; then
   die "tmux session is not running: $session"
 fi
 
-tmux send-keys -t "$pane" C-m
+team_tmux_submit "$pane"

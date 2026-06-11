@@ -171,6 +171,8 @@ case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *"send-keys"*"C-m"*) ;;
   *) echo "startup prompt was not accepted with C-m" >&2; exit 1 ;;
 esac
+startup_enter_count="$(grep -o 'C-m' "$TEAM_FAKE_TMUX_LOG" | wc -l | tr -d ' ')"
+[[ "$startup_enter_count" -ge 3 ]] || { echo "startup prompt was not submitted with repeated C-m" >&2; exit 1; }
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *"send-keys"*"AGENTS.md"*) ;;
   *) echo "boot nudge was not submitted with C-m" >&2; exit 1 ;;
@@ -222,6 +224,8 @@ case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *"send-keys"*"inbox worker-1"*"C-m"*) ;;
   *) echo "nudge did not submit inbox with C-m" >&2; exit 1 ;;
 esac
+nudge_enter_count="$(grep -o 'C-m' "$TEAM_FAKE_TMUX_LOG" | wc -l | tr -d ' ')"
+[[ "$nudge_enter_count" -ge 3 ]] || { echo "nudge was not submitted with repeated C-m" >&2; exit 1; }
 
 : > "$TEAM_FAKE_TMUX_LOG"
 PATH="$TMP_BASE/bin:$PATH" \
@@ -233,6 +237,8 @@ case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *"send-keys"*"C-m"*) ;;
   *) echo "team_submit did not send C-m" >&2; exit 1 ;;
 esac
+submit_enter_count="$(grep -o 'C-m' "$TEAM_FAKE_TMUX_LOG" | wc -l | tr -d ' ')"
+[[ "$submit_enter_count" -ge 3 ]] || { echo "team_submit did not send repeated C-m" >&2; exit 1; }
 
 worker_1="$TMP_BASE/worktrees/worker-1"
 [[ -d "$worker_1/.git" || -f "$worker_1/.git" ]]
