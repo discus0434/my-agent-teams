@@ -1,0 +1,18 @@
+.DS_Store
+
+# Runtime queue/state. Keep the directory skeleton in Git, but not live traffic.
+queue/inbox/*
+!queue/inbox/.gitkeep
+queue/reports/*
+!queue/reports/.gitkeep
+queue/reviews/*
+!queue/reviews/.gitkeep
+queue/integrations/*
+!queue/integrations/.gitkeep
+queue/state/*
+!queue/state/.gitkeep
+queue/memory_proposals/*
+!queue/memory_proposals/.gitkeep
+queue/tasks/*
+!queue/tasks/.gitkeep
+!queue/tasks/TEMPLATE.md

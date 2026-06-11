@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/team_common.sh"
+source "$SCRIPT_DIR/team_config.sh"
+
+usage() {
+  echo "usage: team_review.sh <task_id> <worker_id>" >&2
+}
+
+[[ $# -eq 2 ]] || { usage; exit 2; }
+
+task_id="$1"
+worker_id="$2"
+
+[[ "$task_id" != */* ]] || die "task_id must not contain '/': $task_id"
+[[ "$worker_id" != */* ]] || die "worker_id must not contain '/': $worker_id"
+
+if ! team_config_agent_record "$worker_id" >/dev/null; then
+  die "unknown worker: $worker_id"
+fi
+
+worker_role="$(team_config_agent_field "$worker_id" role)"
+[[ "$worker_role" == "worker" ]] || die "$worker_id is not a worker agent"
+
+review_cli="$(team_config_review_field cli)" || die "team.review.cli is missing in $TEAM_CONFIG_FILE"
+review_model="$(team_config_review_field model)" || die "team.review.model is missing in $TEAM_CONFIG_FILE"
+review_effort="$(team_config_review_field effort)" || die "team.review.effort is missing in $TEAM_CONFIG_FILE"
+review_output_dir="$(team_config_review_field output_dir)" || die "team.review.output_dir is missing in $TEAM_CONFIG_FILE"
+
+[[ "$review_cli" == "claude" ]] || die "unsupported team.review.cli: $review_cli"
+require_command "$review_cli"
+
+ensure_team_dirs
+
+task_file="$TEAM_QUEUE_DIR/tasks/$task_id.md"
+report_file="$TEAM_QUEUE_DIR/reports/${task_id}_${worker_id}.md"
+state_file="$(team_task_state_file "$task_id")"
+
+[[ -f "$task_file" ]] || die "task file not found: $task_file"
+[[ -f "$report_file" ]] || die "report file not found: $report_file"
+[[ -f "$state_file" ]] || die "task is not claimed: $task_id"
+
+state_owner="$(team_task_state_field "$task_id" owner)"
+worker_worktree="$(team_task_state_field "$task_id" worktree)"
+task_branch="$(team_task_state_field "$task_id" branch)"
+base_commit="$(team_task_state_field "$task_id" base_commit)"
+previous_integration="$(team_task_state_field "$task_id" integration)"
+
+[[ "$state_owner" == "$worker_id" ]] || die "task $task_id is owned by $state_owner, not $worker_id"
+[[ -n "$worker_worktree" ]] || die "$worker_id worktree is missing"
+[[ -n "$task_branch" ]] || die "task $task_id state is missing branch"
+[[ -n "$base_commit" ]] || die "task $task_id state is missing base_commit"
+abs_worktree="$(abs_path "$worker_worktree")"
+[[ -d "$abs_worktree" ]] || die "worker worktree not found: $abs_worktree"
+current_branch="$(git -C "$abs_worktree" branch --show-current)"
+[[ "$current_branch" == "$task_branch" ]] || die "worker worktree is on $current_branch, expected $task_branch"
+
+if ! team_git_is_clean "$abs_worktree"; then
+  team_git_dirty_summary "$abs_worktree" >&2
+  die "worker worktree must be clean before review: $abs_worktree"
+fi
+
+head_commit="$(git -C "$abs_worktree" rev-parse HEAD)"
+
+output_dir="$(abs_path "$review_output_dir")"
+mkdir -p "$output_dir"
+
+summary_file="$output_dir/${task_id}_${worker_id}_review.md"
+raw_file="$output_dir/${task_id}_${worker_id}_review_claude.txt"
+prompt_file="$output_dir/${task_id}_${worker_id}_review_prompt.txt"
+status_file="$output_dir/${task_id}_${worker_id}_git_status.txt"
+committed_diff_file="$output_dir/${task_id}_${worker_id}_committed_diff.patch"
+exec_log="$output_dir/${task_id}_${worker_id}_review.exec.log"
+
+git -C "$abs_worktree" status --short > "$status_file"
+git -C "$abs_worktree" diff --no-ext-diff "$base_commit..$head_commit" -- . > "$committed_diff_file"
+
+cat > "$prompt_file" <<PROMPT
+You are a read-only verifier for a tmux-based agent team. Do not modify files.
+
+Review the worker's implementation against the task. The worker is responsible for implementation, post-change checks, smoke checks, and follow-up fixes. Your job is only to review and return findings.
+
+Inputs:
+- Task file: $task_file
+- Worker report: $report_file
+- Worker worktree: $abs_worktree
+- Task branch: $task_branch
+- Base commit: $base_commit
+- Head commit: $head_commit
+- Git status snapshot: $status_file
+- Committed task diff: $committed_diff_file
+
+Focus:
+- Task acceptance and explicit constraints.
+- User-visible behavior, API/data/event contracts, ownership boundaries, side effects, failure behavior, and verification evidence.
+- Unrequested compatibility layers, aliases, silent fallbacks, default-value fallbacks, or ad-hoc alternate paths.
+- Test quality: prefer public contract, structural, or integration evidence; do not request brittle, fragile, flaky, or implementation-detail-heavy tests.
+
+Do not run make post-change, make smoke, team_review.sh, or any nested review command.
+
+Output exactly these sections:
+
+Decision: OK | FIX | ASK_LEAD
+
+## Findings
+
+- Severity: Critical | Major | Minor | Info
+  Task section:
+  File/path:
+  Issue:
+  Required worker action:
+
+## Verification Gaps
+
+## Notes
+
+Use OK only when there are no Critical or Major issues.
+Use FIX when the worker can make a clear correction within the assigned task.
+Use ASK_LEAD when the remaining decision changes scope, contract, ownership, or user-visible behavior.
+PROMPT
+
+status=0
+prompt="$(<"$prompt_file")"
+cmd=(
+  "$review_cli"
+  --print
+  --model "$review_model"
+  --permission-mode bypassPermissions
+  --output-format text
+  --add-dir "$TEAM_ROOT"
+  --add-dir "$abs_worktree"
+  "$prompt"
+)
+(
+  cd "$abs_worktree"
+  CLAUDE_CODE_EFFORT_LEVEL="$review_effort" "${cmd[@]}"
+) > "$raw_file" 2> "$exec_log" || status=$?
+
+if [[ "$status" -ne 0 ]]; then
+  die "review failed with exit status $status. See $exec_log"
+fi
+
+{
+  echo "# Review: $task_id by $worker_id"
+  echo
+  echo "Model: $review_model"
+  echo "Effort: $review_effort"
+  echo "Task: $task_file"
+  echo "Report: $report_file"
+  echo "Worktree: $abs_worktree"
+  echo "Branch: $task_branch"
+  echo "Base commit: $base_commit"
+  echo "Head commit: $head_commit"
+  echo "Git status: $status_file"
+  echo "Committed diff: $committed_diff_file"
+  echo "Raw output: $raw_file"
+  echo "Exec log: $exec_log"
+  echo
+  echo "## Result"
+  echo
+  cat "$raw_file"
+} > "$summary_file"
+
+decision="$(team_review_decision "$summary_file")"
+[[ -n "$decision" ]] || die "review did not include a valid Decision line: $summary_file"
+
+case "$decision" in
+  OK) next_status="review-ok" ;;
+  FIX) next_status="review-fix" ;;
+  ASK_LEAD) next_status="review-ask-lead" ;;
+  *) die "invalid review decision: $decision" ;;
+esac
+
+team_write_task_state \
+  "$task_id" \
+  "$worker_id" \
+  "$next_status" \
+  "$worker_worktree" \
+  "$task_branch" \
+  "$base_commit" \
+  "$head_commit" \
+  "$(team_task_state_field "$task_id" merge_commit)" \
+  "$report_file" \
+  "$summary_file" \
+  "$previous_integration" \
+  "$decision"
+
+message="Review completed: $summary_file を読んでください。明確に有効な Critical/Major は修正し、修正後に make post-change と make smoke を再実行してください。判断に迷う指摘は lead に相談してください。"
+"$SCRIPT_DIR/team_send.sh" --from verifier "$worker_id" review "$task_id" "$message" >/dev/null
+
+echo "$summary_file"
