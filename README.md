@@ -1,22 +1,62 @@
 # customizable-agent-teams
 
-Claude Code と Codex を混ぜて、ローカルの tmux 上で lead / worker チームを動かすためのテンプレートです。
+ローカルの tmux 上で、複数の coding agent（Claude Code / Codex など）を **lead / worker / verifier** のチームとして動かすためのプロジェクトテンプレートです。人間は lead に話しかけるだけで、task → claim → 実装 → 検証 → review → integrate という開発ループがそのまま回ります。
 
-このリポジトリを使うと、次の流れをそのまま始められます。
-
-1. lead pane に人間が依頼する。
-2. lead が小さい変更は直接行い、大きい変更は task に分ける。
-3. worker が repo 外 worktree の task branch で実装する。
-4. worker が検証、smoke、review 対応、report 更新まで行う。
-5. lead が `make integrate` で root repository に取り込む。
+単一の agent に長い作業を丸投げすると、文脈が混ざり、検証が抜け、並列に進めた変更が衝突します。このテンプレートは作業を **隔離された task** に分け、それぞれを専用の git worktree とブランチで実装し、機械的な検証ゲートと review を通ったものだけを root に統合します。CLI と model は役割ごとに差し替えられるので、たとえば lead に Claude/Fable、worker に Codex/GPT、verifier に Claude/Opus、といった組み合わせを 1 つの設定ファイルで指定できます。
 
 ![customizable-agent-teams workflow](.agents/assets/agent-team-flow.png)
 
-## Quick Start
+## 特徴
 
-1. 前提ツールをインストールする。
+- **役割分担** — 依頼を受ける lead、隔離環境で実装する worker、変更を審査する verifier に責務を分離。
+- **worktree 隔離** — 各 worker は repo 外の linked worktree と専用ブランチで作業するため、親 repo の `git status` / 検索 / formatter / IDE が他の作業に巻き込まれず、並列実装でも衝突しません。
+- **強制された検証ゲート** — `make post-change`（format / lint / type / test）と `make smoke`（利用者向け動作の確認）を通らないと report にも integrate にも進めません。
+- **noninteractive review** — `make review` が task・report・committed diff を verifier に渡し、`OK` / `FIX` / `ASK_LEAD` を機械的に返します。verifier は常駐せず、review のたびに 1 回だけ起動されます。
+- **file mailbox + tmux nudge** — agent 間の通信本文は queue 上の file が正本。tmux には短い `inbox <agent_id>` という合図だけを流します。
+- **CLI / model の混在** — `.agents/config/agent-team.yaml` で役割ごとに CLI・model・worktree・起動コマンドを設定。チーム構成や worker 数を 1 ファイルで変更できます。
+- **対話的 bootstrap** — 最初の会話で「何を作るか」「言語と toolchain」「`make post-change`」「`make smoke`」を決め、テンプレート由来の文言を実プロジェクトの内容に置き換えます。
 
-macOS:
+## 仕組み
+
+### 役割
+
+| 役割 | 配置 | 責務 |
+| --- | --- | --- |
+| **lead** | tmux `lead` pane（人間の窓口） | 依頼を受け、小さな変更は直接行い、大きな変更を task に分けて dispatch。worker の質問に答え、review を通った report だけを `make integrate` で統合。`MEMORY.md` の唯一の編集者。 |
+| **worker** | tmux `worker-N` pane + repo 外 worktree | task を claim し、専用ブランチで実装。検証・smoke・review 対応・report 記入まで担当。`Allowed paths` / `Do not modify` を守る。 |
+| **verifier** | `make review` 実行時に noninteractive 起動 | task・report・committed diff・検証 evidence を読み、`OK` / `FIX` / `ASK_LEAD` を返す。file は編集せず、worktree も持たない。 |
+
+### task のライフサイクル
+
+```text
+lead が task 作成 ─▶ dispatch ─▶ worker が claim（task ブランチを checkout）
+        ─▶ 実装 ─▶ make post-change / make smoke ─▶ commit
+        ─▶ report ─▶ make review ─┬─ OK   ─▶ report を done に
+                                   ├─ FIX  ─▶ 修正して再 review
+                                   └─ ASK_LEAD ─▶ lead に相談
+        ─▶ lead が make integrate（--no-ff merge + post-change + smoke）
+```
+
+### state は file で持つ
+
+agent 間で共有する状態はすべて `TEAM_ROOT`（lead の repo root）以下の file が正本です。worker worktree 内の `.agents/queue/` は空または stale な skeleton なので、Make ターゲットかメッセージに書かれた絶対パスを使います。
+
+- `tasks/` — task 本文 / `inbox/` — agent メッセージ / `reports/` — worker report
+- `reviews/` — verifier 結果 / `integrations/` — lead 統合ログ / `state/` — ライフサイクル状態
+
+## こんなときに使う
+
+- **独立した複数機能を並列で進めたい** — worker ごとに隔離 worktree があるので衝突しません。
+- **model や CLI を混ぜたい / 比較したい** — 役割や worker 単位で別の model を割り当てられます。
+- **review を必須の関門にしたい** — 検証ゲートと noninteractive review を通らないものは統合されません。
+- **agent に渡す作業を契約として明示したい** — task file に `Allowed paths`・`Acceptance`・`Verification` を書いて境界を固定できます。
+
+## 必要なツール
+
+`gh` `ripgrep` `fd` `bat` `jq` `git-delta` `direnv` `tmux` と、使う coding agent の CLI（`claude` / `codex` など）、選んだ stack の toolchain（例: Python なら `uv`、TypeScript なら `pnpm` / `node`）。
+
+<details>
+<summary>macOS でまとめてインストール</summary>
 
 ```bash
 brew install gh ripgrep fd bat jq yq git-delta direnv tmux pnpm node python uv
@@ -24,7 +64,10 @@ brew install --cask codex
 npm install -g @anthropic-ai/claude-code
 ```
 
-Linux:
+</details>
+
+<details>
+<summary>Linux（apt 系）でまとめてインストール</summary>
 
 ```bash
 npm install -g @openai/codex @anthropic-ai/claude-code
@@ -44,170 +87,102 @@ command -v fd >/dev/null || sudo ln -s /usr/bin/fdfind /usr/local/bin/fd
 command -v bat >/dev/null || sudo ln -s /usr/bin/batcat /usr/local/bin/bat
 ```
 
-2. 今の shell で `direnv` を有効にする。
+</details>
 
-```bash
-if [ -n "${ZSH_VERSION:-}" ]; then
-  rc="$HOME/.zshrc"
-  hook='eval "$(direnv hook zsh)"'
-  eval "$(direnv hook zsh)"
-elif [ -n "${BASH_VERSION:-}" ]; then
-  rc="$HOME/.bashrc"
-  hook='eval "$(direnv hook bash)"'
-  eval "$(direnv hook bash)"
-else
-  echo "Add the direnv hook for your shell, then rerun Quick Start." >&2
-  exit 1
-fi
-grep -Fqx "$hook" "$rc" 2>/dev/null || printf '\n%s\n' "$hook" >> "$rc"
-```
+## Quick Start
+
+1. このテンプレートから新しい repo を作り、clone する。
+
+2. 現在の shell で `direnv` を有効にする。
+
+   <details>
+   <summary>direnv フックを shell に追加する（未設定の場合）</summary>
+
+   ```bash
+   if [ -n "${ZSH_VERSION:-}" ]; then
+     rc="$HOME/.zshrc"; hook='eval "$(direnv hook zsh)"'
+   elif [ -n "${BASH_VERSION:-}" ]; then
+     rc="$HOME/.bashrc"; hook='eval "$(direnv hook bash)"'
+   else
+     echo "Add the direnv hook for your shell, then rerun Quick Start." >&2; exit 1
+   fi
+   eval "$hook"
+   grep -Fqx "$hook" "$rc" 2>/dev/null || printf '\n%s\n' "$hook" >> "$rc"
+   ```
+
+   </details>
 
 3. bootstrap を開始する。
 
-```bash
-make bootstrap
-```
+   ```bash
+   make bootstrap
+   ```
 
-attach すると `lead` pane が bootstrap を開始し、何を作るかを最初の1問として聞きます。
+   attach すると `lead` pane が「何を作るか」を最初の 1 問として聞いてきます。回答に応じて、作るもの・言語と package manager・formatter / linter / test runner・build command・`make post-change`・`make smoke`・README / AGENTS / package metadata / entrypoint がプロジェクト用に初期化されます。
 
-4. lead の質問に答える。
+4. bootstrap が固まったら tmux から detach（`Ctrl-b` のあと `d`）し、repo root で次を実行する。
 
-lead の質問に答えると、次のものがプロジェクト用に初期化されます。
+   ```bash
+   make bootstrap-finish
+   ```
 
-- 何を作るか
-- 使用言語と package manager
-- formatter / linter / test runner
-- build command
-- `make post-change`
-- `make smoke` で確認する代表的な利用者向け動作
-- README、AGENTS、package metadata、entrypoints
+   完了すると、worker を含む `agent-team` tmux session に attach されます。以降は lead pane に依頼を入力するだけです。
 
-5. bootstrap を完了して、worker を含めた team を起動する。
+## チームの設定
 
-bootstrap が終わったら tmux から detach して、repository root の shell で実行します。tmux の detach は `Ctrl-b` の後に `d` です。
+役割・model・CLI・worker 数は `.agents/config/agent-team.yaml` で変更します。
 
-```bash
-make bootstrap-finish
-```
+- `team.lead` — lead の CLI / model / tmux window / 起動コマンド
+- `team.workers` — worker ごとの CLI / model / window / worktree path / 起動コマンド（増減も可能）
+- `team.review` — verifier の CLI / model / effort / timeout / 出力先
 
-`make bootstrap-finish` が終わると、worker を含む `agent-team` tmux session に attach されます。
+worker worktree path 中の `{team_root}` は repo の directory 名に展開されます。linked worktree を repo の外に置くのは、親 repo の git status・検索・formatter・IDE がネストした checkout に入り込まないようにするためです。
 
-## Configure Agents
+## 日常運用
 
-Lead / Worker / Verifier は `.agents/config/agent-team.yaml` で変更できます。
+agent はそれぞれ役割に沿って下記コマンドを使います。詳しい前提条件・チェック内容・state 遷移は [`.agents/docs/TEAM_PROTOCOL.md`](.agents/docs/TEAM_PROTOCOL.md) を参照してください。
 
-- `team.lead`: lead agent の CLI、model、tmux window、起動 command
-- `team.workers`: worker 数、CLI、model、tmux window、worktree path、起動 command
-- `team.review`: verifier の CLI、model、timeout、output directory
+| 操作 | コマンド | 主に使う役割 |
+| --- | --- | --- |
+| チーム起動 / 再起動 | `make team-start` → `tmux attach -t agent-team` | 人間 |
+| 状態確認 | `make team-status` | lead |
+| task 作成・送付 | `cp .agents/queue/tasks/TEMPLATE.md .agents/queue/tasks/T-001.md` → 編集 → `make team-send TO=worker-1 TYPE=task_assigned TASK=T-001` | lead |
+| inbox 確認 / 既読 | `make inbox AGENT=worker-1` / `make inbox AGENT=worker-1 MARK=<id>` | 全員 |
+| 未送信プロンプトの送信 | `make team-submit AGENT=worker-1` | 全員 |
+| task の claim | `make claim TASK=T-001 AGENT=worker-1` | worker |
+| 検証ゲート | `make post-change` / `make smoke` | worker / lead |
+| report 記入 | `make report TASK=T-001 AGENT=worker-1 STATUS=needs-review` | worker |
+| review 実行 | `make review TASK=T-001 AGENT=worker-1` | worker |
+| 統合 | `make integrate TASK=T-001 AGENT=worker-1` | lead |
+| 停止 | `make team-stop` | 人間 |
 
-Lead / Worker / Verifier は Claude Code / Codex などに差し替えられます。worker worktree path では `{team_root}` が repository directory name に展開されます。
+task file の `Branch:` は必ず `task/<owner>/<task_id>` の形にします（例: `Owner: worker-1` / `Branch: task/worker-1/T-001`）。`make integrate` は `ready-to-integrate` の task だけを対象に `--no-ff` merge と検証を実行し、結果を `.agents/queue/integrations/` に残します。
 
-## Start A Team
+## Repository layout
 
-```bash
-make team-start
-tmux attach -t agent-team
-```
+| パス | 内容 |
+| --- | --- |
+| `AGENTS.md` | 全 agent 共通の作業ルール（`CLAUDE.md` は symlink） |
+| `.agents/config/agent-team.yaml` | 役割・model・起動コマンド・worktree 設定 |
+| `.agents/docs/TEAM_PROTOCOL.md` | task / report / review / integration の詳細手順 |
+| `.agents/docs/MEMORY.md` | 共有 memory と更新ルール（lead のみ編集） |
+| `.agents/skills/` | Claude Code / Codex 共通の skill（`.claude/skills`・`.codex/skills` は symlink） |
+| `.agents/scripts/` | harness を構成する各コマンドの実体 |
+| `.agents/queue/` | tasks / inbox / reports / reviews / integrations / state |
+| `.agents/tests/harness/` | harness 自体の test |
+| `Makefile` | すべての操作 entrypoint |
 
-lead への依頼は、tmux の `lead` pane にそのまま入力します。
+## Harness 自体を変更したとき
 
-agent 間の通知は短い `inbox <agent_id>` だけです。本文は `.agents/queue/inbox/` と `.agents/queue/tasks/` にあります。
-
-```bash
-make inbox AGENT=worker-1
-make inbox AGENT=worker-1 MARK=<message_id>
-```
-
-pane に `inbox <agent_id>` が入力されたまま止まっている場合:
-
-```bash
-make team-submit AGENT=worker-1
-```
-
-## Dispatch A Task
-
-```bash
-cp .agents/queue/tasks/TEMPLATE.md .agents/queue/tasks/T-001.md
-${EDITOR:-vi} .agents/queue/tasks/T-001.md
-make team-send TO=worker-1 TYPE=task_assigned TASK=T-001
-make team-status
-```
-
-task file では branch を必ずこの形にします。
-
-```text
-Owner: worker-1
-Branch: task/worker-1/T-001
-```
-
-## Worker Commands
-
-```bash
-make claim TASK=T-001 AGENT=worker-1
-make post-change
-make smoke
-git add <changed-files>
-git commit -m "T-001: implement task"
-make report TASK=T-001 AGENT=worker-1 STATUS=needs-review
-make review TASK=T-001 AGENT=worker-1
-```
-
-review result:
-
-- `OK`: `make report TASK=T-001 AGENT=worker-1 STATUS=done`
-- `FIX`: 修正、再検証、追加 commit、再 report、再 review
-- `ASK_LEAD`: report に質問を書いて lead に相談
-
-review artifact を読んだ後、review 通知が inbox に残っていれば mark します。
-
-```bash
-make inbox AGENT=worker-1
-make inbox AGENT=worker-1 MARK=<message_id>
-```
-
-## Integrate
-
-lead は `ready-to-integrate` の task だけを取り込みます。
-
-```bash
-make team-status
-make integrate TASK=T-001 AGENT=worker-1
-```
-
-`make integrate` は `--no-ff` merge、`make post-change`、`make smoke` を実行し、結果を `.agents/queue/integrations/` に残します。
-
-## Stop
-
-```bash
-make team-stop
-```
-
-## Harness Maintenance
-
-agent-team harness 自体を変更したときの確認:
+`.agents/` 以下の harness を編集した場合は、構文と lifecycle を確認します。
 
 ```bash
 make post-change
 make harness-test
 ```
 
-Harness tests live in `.agents/tests/harness/`.
+## ドキュメント
 
-## Important Files
-
-- `AGENTS.md`: 全 agent 共通の作業ルール
-- `CLAUDE.md`: `AGENTS.md` への symlink
-- `.agents/skills/`: Codex / Claude Code 共通 skill
-- `.codex/skills`: `.agents/skills` への symlink
-- `.claude/skills`: `.codex/skills` への symlink
-- `.agents/config/agent-team.yaml`: role、model、起動 command、worktree 設定
-- `.agents/docs/TEAM_PROTOCOL.md`: task、report、review、integration の詳細手順
-- `.agents/docs/MEMORY.md`: 共有 memory と更新ルール
-- `.agents/queue/tasks/`: task files
-- `.agents/queue/inbox/`: agent inbox
-- `.agents/queue/reports/`: worker reports
-- `.agents/queue/reviews/`: verifier reviews
-- `.agents/queue/integrations/`: lead integration logs
-- `.agents/scripts/`: harness commands
-- `.agents/tests/harness/`: harness tests
-- `Makefile`: 操作用 entrypoints
+- [`AGENTS.md`](AGENTS.md) — 役割ごとの作業ルール
+- [`.agents/docs/TEAM_PROTOCOL.md`](.agents/docs/TEAM_PROTOCOL.md) — task / review / integration の詳細
+- [`.agents/docs/MEMORY.md`](.agents/docs/MEMORY.md) — 共有 memory のルール
