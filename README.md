@@ -39,13 +39,13 @@ bootstrap では `lead` だけが起動します。worker は初期化後の com
 
 ## Configure Agents
 
-Lead、worker、review runner は `.agents/config/agent-team.yaml` で変更できます。
+Lead / Worker / Verifier は `.agents/config/agent-team.yaml` で変更できます。
 
 - `team.lead`: lead agent の CLI、model、tmux window、起動 command
 - `team.workers`: worker 数、CLI、model、tmux window、worktree path、起動 command
-- `team.review`: noninteractive verifier の CLI、model、output directory
+- `team.review`: verifier の CLI、model、output directory
 
-Lead / worker は Claude Code / Codex のどちらにもできます。worker worktree path では `{team_root}` が repository directory name に展開されます。
+Lead / Worker / Verifier は Claude Code / Codex などに差し替えられます。worker worktree path では `{team_root}` が repository directory name に展開されます。
 
 ## Install
 
