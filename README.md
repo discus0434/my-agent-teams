@@ -1,4 +1,4 @@
-# my-agent-teams
+# customizable-agent-teams
 
 Claude Code と Codex を混ぜて、ローカルの tmux 上で lead / worker チームを動かすためのテンプレートです。
 
@@ -32,7 +32,7 @@ tmux attach -t agent-team
 
 attach すると `lead` pane が bootstrap を開始し、何を作るか質問します。
 
-worker worktree は `../my-agent-teams-worktrees/<agent_id>` に作られます。repo 内に worktree は置きません。
+worker worktree は `../customizable-agent-teams-worktrees/<agent_id>` に作られます。repo 内に worktree は置きません。
 
 ## Install
 

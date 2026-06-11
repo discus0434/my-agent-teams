@@ -38,7 +38,7 @@ smoke:
 	@echo "temp smoke ok"
 MAKE
 
-perl -0pi -e 's#\.\./my-agent-teams-worktrees/#../worktrees/#g' "$TMP_CONFIG_FILE"
+perl -0pi -e 's#\.\./customizable-agent-teams-worktrees/#../worktrees/#g' "$TMP_CONFIG_FILE"
 perl -0pi -e 's/(  review:\n    cli: )claude/${1}codex/; s/(  review:\n    cli: codex\n    model: )claude-opus-4-8/${1}gpt-5.5/' "$TMP_CONFIG_FILE"
 mkdir -p "$TMP_BASE/bin"
 
