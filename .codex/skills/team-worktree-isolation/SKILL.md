@@ -21,7 +21,7 @@ git rev-parse --git-common-dir
 git rev-parse --show-superproject-working-tree 2>/dev/null
 ```
 
-- submodule を linked worktree と誤認しない。
+- `git rev-parse` の値で linked worktree と submodule を区別する。
 - config の `worktree` path が repo 外を向いている。
 - 対象 path が空でない非-worktree なら fail fast。
 

@@ -44,4 +44,4 @@ description: Use by a lead after the goal is understood and worker delegation is
 - 重要 requirement が task か acceptance に対応している。
 - ownership が重ならない。
 - 各 task が検証 command または未検証理由を持つ。
-- 依頼されていない互換レイヤ、fallback、余計な feature を含めていない。
+- scope が user request と acceptance に対応している。

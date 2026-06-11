@@ -22,7 +22,7 @@ Ask only blocking questions.
 - package name, public entrypoints, and first user-visible behavior。
 - `make post-change` で必ず検証したい contract。
 
-既存 repo や user request から分かることは質問しない。
+既存 repo や user request から確定できることはそのまま採用する。
 
 ## Contract
 
@@ -34,7 +34,7 @@ Ask only blocking questions.
 - 選ばなかった言語や未使用 scaffold は残さない。
 - `AGENTS.md` には選んだ stack の command だけを書く。
 - 必要な package manager lockfile を作る。
-- 必須 tool が無い場合は失敗させる。silent fallback を作らない。
+- 必須 tool が無い場合は blocker として扱う。
 
 Python and TypeScript below are examples of this rule, not the only supported stacks.
 
@@ -126,7 +126,7 @@ For a package/app build contract, add `$(PNPM) -s build` to `post-change-ts`.
 - Wire the selected tools into `make post-change`.
 - Put only runtime or end-to-end smoke in `make smoke`.
 - Update `AGENTS.md` and `README.md` with the actual selected commands.
-- Do not leave Python or TypeScript examples in the bootstrapped repo unless that stack was selected.
+- Keep only examples and scaffold for the selected stack.
 - 必須 command が無い場合は失敗させる。
 
 Examples:
@@ -142,7 +142,7 @@ Examples:
 - Use explicit package dir variables such as `PY_PACKAGE_DIRS` and `TS_PACKAGE_DIRS`.
 - For multiple stacks, define `post-change` once and depend on each selected subtarget.
 - If selective execution is worth it, add one explicit changed-file selector script and call it from `post-change-*`.
-- Do not autodetect package dirs at runtime.
+- Declare package dirs explicitly.
 
 ```make
 post-change: post-change-py post-change-ts

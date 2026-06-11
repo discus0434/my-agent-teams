@@ -25,7 +25,12 @@ Read before task work:
 
 - Use `gh` for GitHub operations such as PR creation, PR status, issue comments, review comments, and CI inspection.
 - When repository environment variables must be loaded, run commands through `direnv exec . <command>`.
-- Do not add fallback command paths for missing required tools. Fail fast and report the missing command.
+- Missing required tools are blockers. Report the missing command.
+
+## User Interface
+
+- Human users give project instructions directly in the lead tmux pane.
+- Use file mailbox plus tmux nudges for agent-to-agent messages, including lead-to-worker dispatch and worker-to-lead questions.
 
 ## Roles
 
@@ -57,7 +62,7 @@ Use workers when isolation, parallelism, review follow-up, or separate ownership
 - Commit the finished task branch before review.
 - Run noninteractive review and handle the result.
 - Report blockers, questions, verification gaps, and memory proposals.
-- Do not edit `docs/MEMORY.md`.
+- Submit memory changes as proposals. Lead edits `docs/MEMORY.md`.
 
 ### verifier
 

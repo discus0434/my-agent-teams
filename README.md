@@ -82,6 +82,8 @@ make team-start
 tmux attach -t agent-team
 ```
 
+Human users type project requests directly into the `lead` pane. Agent-to-agent messages use the file mailbox and short tmux nudges.
+
 worker worktree は `../my-agent-teams-worktrees/<agent_id>` に作られます。repo 内 `worktrees/` は使いません。
 
 ## Dispatch

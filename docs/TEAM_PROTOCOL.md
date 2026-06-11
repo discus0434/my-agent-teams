@@ -16,6 +16,23 @@ tmux carries only short nudges:
 inbox <agent_id>
 ```
 
+## Human To Lead
+
+Human users interact with the lead through the lead tmux pane.
+
+Use the lead pane for:
+
+- project requests
+- bootstrap conversations
+- scope decisions
+- integration decisions
+
+Use mailbox plus tmux nudge for:
+
+- lead-to-worker task dispatch
+- worker-to-lead questions
+- verifier-to-worker review results
+
 ## Identity
 
 `team_start.sh` passes identity through environment variables and tmux pane metadata.
@@ -151,11 +168,11 @@ Result is written to:
 queue/integrations/<task_id>_<agent_id>.md
 ```
 
-If merge or checks fail, do not invent a fallback path. Fix the integration state in lead root or send a new task back to the worker.
+If merge or checks fail, the task remains unintegrated. Lead fixes the root state or sends a follow-up task to the worker.
 
 ## Memory
 
-Workers do not edit `docs/MEMORY.md`.
+Workers submit memory proposals. Lead edits `docs/MEMORY.md`.
 
 Memory proposal path:
 

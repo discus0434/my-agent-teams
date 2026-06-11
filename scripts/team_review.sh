@@ -82,7 +82,7 @@ git -C "$abs_worktree" status --short > "$status_file"
 git -C "$abs_worktree" diff --no-ext-diff "$base_commit..$head_commit" -- . > "$committed_diff_file"
 
 cat > "$prompt_file" <<PROMPT
-You are a read-only verifier for a tmux-based agent team. Do not modify files.
+You are a read-only verifier for a tmux-based agent team. Return review only and leave files unchanged.
 
 Review the worker's implementation against the task. The worker is responsible for implementation, post-change checks, smoke checks, and follow-up fixes. Your job is only to review and return findings.
 
@@ -99,10 +99,10 @@ Inputs:
 Focus:
 - Task acceptance and explicit constraints.
 - User-visible behavior, API/data/event contracts, ownership boundaries, side effects, failure behavior, and verification evidence.
-- Unrequested compatibility layers, aliases, silent fallbacks, default-value fallbacks, or ad-hoc alternate paths.
+- Scope discipline: implementation matches the requested acceptance without extra compatibility APIs, aliases, default-value fallbacks, or ad-hoc alternate paths.
 - Test quality: prefer public contract, structural, or integration evidence; do not request brittle, fragile, flaky, or implementation-detail-heavy tests.
 
-Do not run make post-change, make smoke, team_review.sh, or any nested review command.
+Use the evidence already produced by the worker. Skip nested review commands and additional verification runs.
 
 Output exactly these sections:
 

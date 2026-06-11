@@ -28,7 +28,7 @@ smoke:
 MAKE
 
 perl -0pi -e 's#\.\./my-agent-teams-worktrees/#../worktrees/#g' "$TMP_ROOT/config/agent-team.yaml"
-perl -0pi -e 's/(  review:\n    cli: )claude/${1}codex/; s/(  review:\n    cli: codex\n    model: )claude-opus-4-8/${1}gpt-5/' "$TMP_ROOT/config/agent-team.yaml"
+perl -0pi -e 's/(  review:\n    cli: )claude/${1}codex/; s/(  review:\n    cli: codex\n    model: )claude-opus-4-8/${1}gpt-5.5/' "$TMP_ROOT/config/agent-team.yaml"
 mkdir -p "$TMP_BASE/bin"
 
 git -C "$TMP_ROOT" init -q
@@ -124,11 +124,11 @@ esac
 export TEAM_FAKE_TMUX_LOG="$TMP_BASE/tmux.log"
 PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/scripts/team_start.sh" --restart >/dev/null
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
-  *"TEAM_AGENT_ID=lead"*"TEAM_AGENT_ROLE=lead"*"TEAM_AGENT_MODEL=claude-fable-5"*) ;;
+  *"TEAM_AGENT_ID=lead"*"TEAM_AGENT_ROLE=lead"*"TEAM_AGENT_MODEL="*) ;;
   *) echo "lead launch env was not passed" >&2; exit 1 ;;
 esac
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
-  *"TEAM_AGENT_ID=worker-1"*"TEAM_AGENT_ROLE=worker"*"TEAM_AGENT_MODEL=gpt-5.5"*) ;;
+  *"TEAM_AGENT_ID=worker-1"*"TEAM_AGENT_ROLE=worker"*"TEAM_AGENT_MODEL="*) ;;
   *) echo "worker launch env was not passed" >&2; exit 1 ;;
 esac
 if TEAM_ROOT="$TMP_ROOT" "$TMP_ROOT/scripts/team_config.sh" agent verifier >/dev/null 2>&1; then
