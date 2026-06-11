@@ -33,7 +33,8 @@ Queue, inbox, report, review, and integration artifacts live under `TEAM_ROOT`. 
 
 - Human users give project instructions directly in the lead tmux pane.
 - Use file mailbox plus tmux nudges for agent-to-agent messages, including lead-to-worker dispatch and worker-to-lead questions.
-- When a pane receives `inbox <agent_id>`, run `./scripts/team_inbox.sh <agent_id>` and process the unread message body from `TEAM_ROOT`.
+- When a pane receives `inbox <agent_id>`, run `make inbox AGENT=<agent_id>` and process the unread message body from `TEAM_ROOT`.
+- If a pane shows an unsubmitted `inbox <agent_id>` prompt, submit it with `make team-submit AGENT=<agent_id>`.
 
 ## Roles
 
@@ -111,8 +112,11 @@ Finish:
 
 ```bash
 make report TASK=<task_id> AGENT=<agent_id> STATUS=done
-./scripts/team_inbox.sh <agent_id> --mark <message_id>
+make inbox AGENT=<agent_id>
+make inbox AGENT=<agent_id> MARK=<message_id>
 ```
+
+After review, recheck inbox and mark any review notification already handled through the review artifact.
 
 ## Lead Integration
 

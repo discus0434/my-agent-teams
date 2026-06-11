@@ -86,6 +86,19 @@ Human users type project requests directly into the `lead` pane. Agent-to-agent 
 
 worker worktree は `../my-agent-teams-worktrees/<agent_id>` に作られます。repo 内 `worktrees/` は使いません。
 
+If a pane shows an unsubmitted inbox prompt, submit it explicitly:
+
+```bash
+make team-submit AGENT=worker-1
+```
+
+Read and mark inbox messages through Make:
+
+```bash
+make inbox AGENT=worker-1
+make inbox AGENT=worker-1 MARK=<message_id>
+```
+
 ## Dispatch
 
 ```bash
@@ -126,6 +139,8 @@ Review decision:
 - `OK`: `make report TASK=T-001 AGENT=worker-1 STATUS=done`
 - `FIX`: fix, rerun checks, commit, report `needs-review`, review again
 - `ASK_LEAD`: write the question in the report and notify lead
+
+After review, recheck inbox and mark the verifier notification when the review artifact has already been handled.
 
 ## Integrate
 

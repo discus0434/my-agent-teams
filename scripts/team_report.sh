@@ -97,14 +97,14 @@ Integration: ${integration_file:-none}
 ## Review
 
 - Command: make review TASK=$task_id AGENT=$agent_id
-- Result:
-- Evidence:
+- Result: pending
+- Evidence: update this section after reading ${review_file:-the review artifact}.
 
 ## Integration
 
 - Command: make integrate TASK=$task_id AGENT=$agent_id
-- Result:
-- Evidence:
+- Result: not run by worker
+- Evidence: integration is lead-owned after report Status done and review Decision OK.
 
 ## Blockers
 

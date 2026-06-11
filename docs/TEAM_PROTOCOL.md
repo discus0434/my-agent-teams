@@ -21,7 +21,13 @@ inbox <agent_id>
 On receipt, the agent runs:
 
 ```bash
-./scripts/team_inbox.sh <agent_id>
+make inbox AGENT=<agent_id>
+```
+
+If the prompt is visible in a pane but has not submitted, run:
+
+```bash
+make team-submit AGENT=<agent_id>
 ```
 
 ## Human To Lead
@@ -106,6 +112,7 @@ make team-status
 ```
 
 For direct lightweight requests without a task file, send `TYPE=note`, `TYPE=retro`, or another explicit type with `TASK=-`. The receiver follows the inbox body and does not claim, commit, review, or integrate unless the body says to create a task.
+After writing the requested artifact, the receiver marks the message processed with `make inbox AGENT=<agent_id> MARK=<message_id>`.
 
 ## Worker Lifecycle
 
@@ -142,6 +149,8 @@ Review handling:
 - `Decision: OK`: `make report TASK=<task_id> AGENT=<agent_id> STATUS=done`.
 - `Decision: FIX`: fix, rerun checks, commit, report `needs-review`, and review again.
 - `Decision: ASK_LEAD`: write the question in the report and notify lead.
+
+After review, recheck inbox and mark the verifier notification when the review artifact has already been handled.
 
 Review refuses dirty worker worktrees. The review target is the committed diff from task base commit to worker head.
 

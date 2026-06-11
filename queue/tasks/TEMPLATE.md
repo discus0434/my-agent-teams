@@ -39,6 +39,7 @@ Branch: task/worker-1/T-XXX
 完了時は `queue/reports/T-XXX_worker-1.md` に report を書く。
 `make review` の前に、summary、changed files、verification、post-change、smoke の result/evidence を埋める。
 review 結果は `queue/reviews/T-XXX_worker-1_review.md` を読む。
+review artifact を処理した後、review 通知が inbox に残っていれば `make inbox AGENT=worker-1 MARK=<message_id>` で処理済みにする。
 統合は lead が `make integrate TASK=T-XXX AGENT=worker-1` で行う。
 
 ## Memory

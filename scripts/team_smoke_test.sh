@@ -84,6 +84,9 @@ cat > "$TMP_BASE/bin/tmux" <<'SH'
 #!/usr/bin/env bash
 case "$1" in
   has-session)
+    if [[ "${TEAM_FAKE_TMUX_HAS_SESSION:-0}" == "1" ]]; then
+      exit 0
+    fi
     exit 1
     ;;
   new-session|new-window)
@@ -96,7 +99,11 @@ case "$1" in
     fi
     exit 0
     ;;
-  set-option|send-keys|kill-session)
+  send-keys)
+    printf '%s\n' "$*" >> "$TEAM_FAKE_TMUX_LOG"
+    exit 0
+    ;;
+  set-option|kill-session)
     exit 0
     ;;
   *)
@@ -132,7 +139,11 @@ case "$identity" in
 esac
 
 export TEAM_FAKE_TMUX_LOG="$TMP_BASE/tmux.log"
-PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/scripts/team_start.sh" --restart >/dev/null
+team_start_log="$TMP_BASE/team_start.log"
+if ! PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/scripts/team_start.sh" --restart > "$team_start_log" 2>&1; then
+  cat "$team_start_log" >&2
+  exit 1
+fi
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *"TEAM_AGENT_ID=lead"*"TEAM_AGENT_ROLE=lead"*"TEAM_AGENT_MODEL="*) ;;
   *) echo "lead launch env was not passed" >&2; exit 1 ;;
@@ -146,6 +157,28 @@ if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/
   exit 1
 fi
 
+: > "$TEAM_FAKE_TMUX_LOG"
+PATH="$TMP_BASE/bin:$PATH" \
+  TEAM_ROOT="$TMP_ROOT" \
+  TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" \
+  TEAM_FAKE_TMUX_HAS_SESSION=1 \
+  "$TMP_ROOT/scripts/team_nudge.sh" worker-1
+case "$(<"$TEAM_FAKE_TMUX_LOG")" in
+  *"send-keys"*"inbox worker-1"*"C-m"*) ;;
+  *) echo "nudge did not submit inbox with C-m" >&2; exit 1 ;;
+esac
+
+: > "$TEAM_FAKE_TMUX_LOG"
+PATH="$TMP_BASE/bin:$PATH" \
+  TEAM_ROOT="$TMP_ROOT" \
+  TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" \
+  TEAM_FAKE_TMUX_HAS_SESSION=1 \
+  "$TMP_ROOT/scripts/team_submit.sh" worker-1
+case "$(<"$TEAM_FAKE_TMUX_LOG")" in
+  *"send-keys"*"C-m"*) ;;
+  *) echo "team_submit did not send C-m" >&2; exit 1 ;;
+esac
+
 worker_1="$TMP_BASE/worktrees/worker-1"
 [[ -d "$worker_1/.git" || -f "$worker_1/.git" ]]
 [[ "$(git -C "$worker_1" branch --show-current)" == "agent/worker-1" ]]
@@ -153,7 +186,11 @@ worker_1="$TMP_BASE/worktrees/worker-1"
 printf '%s\n' "root update" > "$TMP_ROOT/root-update.txt"
 git -C "$TMP_ROOT" add root-update.txt
 git -C "$TMP_ROOT" commit -qm "Root update"
-PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/scripts/team_start.sh" --restart >/dev/null
+team_restart_log="$TMP_BASE/team_start_restart.log"
+if ! PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/scripts/team_start.sh" --restart > "$team_restart_log" 2>&1; then
+  cat "$team_restart_log" >&2
+  exit 1
+fi
 [[ "$(git -C "$worker_1" rev-parse HEAD)" == "$(git -C "$TMP_ROOT" rev-parse HEAD)" ]]
 [[ -f "$worker_1/root-update.txt" ]]
 
@@ -180,7 +217,11 @@ TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/tea
 pending_after_mark="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_inbox.sh" worker-1)"
 [[ -z "$pending_after_mark" ]]
 
-TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-001 worker-1 >/dev/null
+team_claim_log="$TMP_BASE/team_claim.log"
+if ! TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-001 worker-1 > "$team_claim_log" 2>&1; then
+  cat "$team_claim_log" >&2
+  exit 1
+fi
 [[ "$(git -C "$worker_1" branch --show-current)" == "task/worker-1/T-001" ]]
 task_base_commit="$(git -C "$worker_1" rev-parse HEAD)"
 if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-001 worker-2 >/dev/null 2>&1; then
@@ -191,6 +232,7 @@ fi
 printf '%s\n' "worker change" > "$worker_1/integration-smoke.txt"
 report_file="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_report.sh" T-001 worker-1 needs-review)"
 [[ -f "$report_file" ]]
+grep -q '^- Result: not run by worker$' "$report_file"
 if PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/scripts/team_review.sh" T-001 worker-1 >/dev/null 2>&1; then
   echo "dirty worktree review unexpectedly succeeded" >&2
   exit 1
