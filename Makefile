@@ -1,8 +1,6 @@
 .PHONY: post-change smoke harness-test team-identity team-bootstrap team-start team-stop team-status team-send team-submit inbox claim report review integrate memory-list memory-append
 
 post-change:
-	@bash -n .agents/scripts/*.sh
-	@bash -n .agents/tests/harness/*.sh
 	@git diff --check -- .
 
 smoke:
@@ -10,6 +8,8 @@ smoke:
 	@exit 1
 
 harness-test:
+	@bash -n .agents/scripts/*.sh
+	@bash -n .agents/tests/harness/*.sh
 	./.agents/tests/harness/team_lifecycle_test.sh
 
 team-identity:

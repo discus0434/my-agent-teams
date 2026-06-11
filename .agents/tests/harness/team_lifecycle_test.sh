@@ -37,7 +37,6 @@ cat > "$TMP_ROOT/Makefile" <<'MAKE'
 .PHONY: post-change smoke
 
 post-change:
-	@bash -n .agents/scripts/*.sh
 	@git diff --check -- .
 
 smoke:
@@ -333,7 +332,7 @@ Integration: none
 
 - Command: make post-change
 - Result: PASS
-- Evidence: temp post-change target runs shell syntax and diff checks.
+- Evidence: temp post-change target checks diff whitespace.
 
 ## Smoke
 
