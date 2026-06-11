@@ -1,4 +1,4 @@
-.PHONY: post-change smoke harness-test team-identity team-bootstrap team-start team-stop team-status team-send team-submit inbox claim report review integrate memory-list memory-append
+.PHONY: post-change smoke harness-test bootstrap bootstrap-finish team-identity team-bootstrap team-start team-stop team-status team-send team-submit inbox claim report review integrate memory-list memory-append
 
 post-change:
 	@git diff --check -- .
@@ -11,6 +11,25 @@ harness-test:
 	@bash -n .agents/scripts/*.sh
 	@bash -n .agents/tests/harness/*.sh
 	./.agents/tests/harness/team_lifecycle_test.sh
+
+bootstrap:
+	direnv allow
+	$(MAKE) post-change
+	$(MAKE) team-bootstrap
+	@session="$$(./.agents/scripts/team_config.sh session)"; tmux attach -t "$$session"
+
+bootstrap-finish:
+	$(MAKE) post-change
+	$(MAKE) smoke
+	rm -rf .agents/skills/team-bootstrap
+	git add -A
+	@if git diff --cached --quiet; then \
+		echo "no bootstrap changes to commit" >&2; \
+		exit 1; \
+	fi
+	git commit -m "Bootstrap project"
+	$(MAKE) team-start
+	@session="$$(./.agents/scripts/team_config.sh session)"; tmux attach -t "$$session"
 
 team-identity:
 	./.agents/scripts/team_identity.sh

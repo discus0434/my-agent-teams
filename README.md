@@ -65,13 +65,10 @@ grep -Fqx "$hook" "$rc" 2>/dev/null || printf '\n%s\n' "$hook" >> "$rc"
 3. bootstrap を開始する。
 
 ```bash
-direnv allow
-make post-change
-make team-bootstrap
-tmux attach -t agent-team
+make bootstrap
 ```
 
-`make team-bootstrap` は `agent-team` tmux session を lead-only で作ります。attach すると `lead` pane が bootstrap を開始し、何を作るかを最初の1問として聞きます。
+`make bootstrap` は `direnv allow`、`make post-change`、lead-only の `agent-team` tmux session 起動、`tmux attach` まで実行します。attach すると `lead` pane が bootstrap を開始し、何を作るかを最初の1問として聞きます。
 
 4. lead の質問に答える。
 
@@ -85,23 +82,15 @@ lead の質問に答えると、次のものがプロジェクト用に初期化
 - `make smoke` で確認する代表的な利用者向け動作
 - README、AGENTS、package metadata、entrypoints
 
-5. bootstrap 結果を commit する。
+5. bootstrap を完了して、worker を含めた team を起動する。
 
 bootstrap が終わったら tmux から detach して、repository root の shell で実行します。tmux の detach は `Ctrl-b` の後に `d` です。
 
 ```bash
-make post-change
-make smoke
-git add .
-git commit -m "Bootstrap project"
+make bootstrap-finish
 ```
 
-6. worker を含めた team を起動する。
-
-```bash
-make team-start
-tmux attach -t agent-team
-```
+`make bootstrap-finish` は `make post-change`、`make smoke`、bootstrap 専用 skill の削除、`git add -A`、`git commit -m "Bootstrap project"`、worker 込みの `agent-team` tmux session 再起動、`tmux attach` まで実行します。
 
 worker worktree は `../<repo-directory>-worktrees/<agent_id>` に作られます。repo 内に worktree は置きません。
 `make team-start` は既存の `agent-team` tmux session を作り直し、bootstrap 結果の commit 後に worker も含めて起動します。
@@ -115,10 +104,6 @@ Lead / Worker / Verifier は `.agents/config/agent-team.yaml` で変更できま
 - `team.review`: verifier の CLI、model、output directory
 
 Lead / Worker / Verifier は Claude Code / Codex などに差し替えられます。worker worktree path では `{team_root}` が repository directory name に展開されます。
-
-## After Bootstrap
-
-bootstrap が終わったプロジェクトでは `.agents/skills/team-bootstrap/` を削除します。
 
 ## Start A Team
 
