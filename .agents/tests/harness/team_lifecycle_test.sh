@@ -97,7 +97,16 @@ case "$1" in
   display-message)
     if [[ "$*" == *"#{pane_id}"* ]]; then
       printf '%%fake-pane\n'
+    elif [[ "$*" == *"#{pane_in_mode}"* ]]; then
+      printf '0\n'
     fi
+    exit 0
+    ;;
+  capture-pane)
+    printf '%s\n' "Claude Code v2.1.173"
+    printf '%s\n' "Try \"edit <filepath> to...\""
+    printf '%s\n' "Quick safety check: Is this a project you created or one you trust?"
+    printf '%s\n' "Enter to confirm"
     exit 0
     ;;
   send-keys)
@@ -154,7 +163,11 @@ case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *) echo "worker launch env was not passed" >&2; exit 1 ;;
 esac
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
-  *"send-keys"*"AGENTS.md"*"C-m"*) ;;
+  *"send-keys"*"C-m"*) ;;
+  *) echo "startup prompt was not accepted with C-m" >&2; exit 1 ;;
+esac
+case "$(<"$TEAM_FAKE_TMUX_LOG")" in
+  *"send-keys"*"AGENTS.md"*) ;;
   *) echo "boot nudge was not submitted with C-m" >&2; exit 1 ;;
 esac
 if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" agent verifier >/dev/null 2>&1; then
@@ -173,9 +186,26 @@ if ! PATH="$TMP_BASE/bin:$PATH" \
   exit 1
 fi
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
-  *"send-keys"*"team-bootstrap"*"何を作るか"*"C-m"*) ;;
+  *"send-keys"*"team-bootstrap"*"何を作るか"*) ;;
   *) echo "bootstrap prompt was not sent to lead" >&2; exit 1 ;;
 esac
+case "$(<"$TEAM_FAKE_TMUX_LOG")" in
+  *"TEAM_AGENT_ID=worker-1"*) echo "bootstrap should start only the lead agent" >&2; exit 1 ;;
+esac
+case "$(<"$TEAM_FAKE_TMUX_LOG")" in
+  *"send-keys"*"C-m"*) ;;
+  *) echo "bootstrap prompt was not submitted" >&2; exit 1 ;;
+esac
+
+: > "$TEAM_FAKE_TMUX_LOG"
+if ! PATH="$TMP_BASE/bin:$PATH" \
+  TEAM_ROOT="$TMP_ROOT" \
+  TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" \
+  TEAM_BOOT_NUDGE=0 \
+  "$TMP_ROOT/.agents/scripts/team_start.sh" --restart > "$team_start_log" 2>&1; then
+  cat "$team_start_log" >&2
+  exit 1
+fi
 
 : > "$TEAM_FAKE_TMUX_LOG"
 PATH="$TMP_BASE/bin:$PATH" \

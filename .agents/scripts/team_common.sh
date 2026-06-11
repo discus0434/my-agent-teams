@@ -25,6 +25,91 @@ require_command() {
   die "required command not found: $name"
 }
 
+team_tmux_capture_pane() {
+  local pane="$1"
+  tmux capture-pane -t "$pane" -p -S -80
+}
+
+team_tmux_cancel_mode_if_needed() {
+  local pane="$1"
+  local pane_in_mode
+
+  pane_in_mode="$(tmux display-message -p -t "$pane" '#{pane_in_mode}')"
+  if [[ "$pane_in_mode" == "1" ]]; then
+    tmux send-keys -t "$pane" -X cancel
+  fi
+}
+
+team_tmux_send_text() {
+  local pane="$1"
+  local text="$2"
+
+  team_tmux_cancel_mode_if_needed "$pane"
+  tmux send-keys -t "$pane" C-u
+  tmux send-keys -t "$pane" -l "$text"
+  tmux send-keys -t "$pane" C-m
+}
+
+team_tmux_content_is_ready() {
+  local content="$1"
+  local cli="$2"
+  local pattern
+
+  case "$cli" in
+    claude)
+      pattern='Claude Code|Try "edit|bypass permissions'
+      ;;
+    codex)
+      pattern='Codex|What can I help|Ask for'
+      ;;
+    *)
+      pattern='Claude Code|Try "edit|bypass permissions|Codex|What can I help|Ask for'
+      ;;
+  esac
+
+  printf '%s\n' "$content" | grep -Eq "$pattern"
+}
+
+team_tmux_accept_startup_prompt() {
+  local pane="$1"
+  local cli="$2"
+  local timeout_seconds="$3"
+  local content
+  local _attempt
+
+  for _attempt in $(seq 1 "$timeout_seconds"); do
+    content="$(team_tmux_capture_pane "$pane")"
+    if printf '%s\n' "$content" | grep -Eq 'Do you trust the contents of this directory|Press enter to continue|Quick safety check: Is this a project you created or one you trust|Enter to confirm'; then
+      team_tmux_cancel_mode_if_needed "$pane"
+      tmux send-keys -t "$pane" C-m
+      sleep 1
+      return 0
+    fi
+    if team_tmux_content_is_ready "$content" "$cli"; then
+      return 0
+    fi
+    sleep 1
+  done
+}
+
+team_tmux_wait_for_ready() {
+  local pane="$1"
+  local cli="$2"
+  local timeout_seconds="$3"
+  local content
+  local _attempt
+
+  for _attempt in $(seq 1 "$timeout_seconds"); do
+    content="$(team_tmux_capture_pane "$pane")"
+    if team_tmux_content_is_ready "$content" "$cli"; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  die "tmux pane did not become ready for input: $pane"
+}
+
 ensure_team_dirs() {
   mkdir -p \
     "$TEAM_QUEUE_DIR/tasks" \

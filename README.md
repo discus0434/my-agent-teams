@@ -33,6 +33,7 @@ tmux attach -t agent-team
 attach すると `lead` pane が bootstrap を開始し、何を作るか質問します。
 
 worker worktree は `../customizable-agent-teams-worktrees/<agent_id>` に作られます。repo 内に worktree は置きません。
+bootstrap では `lead` だけが起動します。worker は初期化後の commit 以降に `make team-start` で起動します。
 
 ## Install
 

@@ -8,11 +8,16 @@ source "$SCRIPT_DIR/team_config.sh"
 
 restart=0
 skip_worktrees=0
+lead_only=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --restart)
       restart=1
+      shift
+      ;;
+    --lead-only)
+      lead_only=1
       shift
       ;;
     --skip-worktrees)
@@ -21,7 +26,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       cat <<'USAGE'
-usage: team_start.sh [--restart] [--skip-worktrees]
+usage: team_start.sh [--restart] [--lead-only] [--skip-worktrees]
 
 Starts the tmux session described in .agents/config/agent-team.yaml.
 USAGE
@@ -128,6 +133,7 @@ send_boot_nudge() {
   local pane="$1"
   local id="$2"
   local role="$3"
+  local cli="$4"
 
   if [[ "${TEAM_BOOT_NUDGE:-1}" == "0" ]]; then
     return 0
@@ -135,9 +141,10 @@ send_boot_nudge() {
 
   sleep "${TEAM_BOOT_NUDGE_DELAY:-1}"
   if [[ "$role" == "lead" ]]; then
-    tmux send-keys -t "$pane" C-u "AGENTS.md を読み、role=lead agent_id=$id として待機してください。ユーザー指示はこのpaneに直接入力されます。agent間通知は inbox $id です。" C-m
+    team_tmux_wait_for_ready "$pane" "$cli" 30
+    team_tmux_send_text "$pane" "AGENTS.md を読み、role=lead agent_id=$id として待機してください。ユーザー指示はこのpaneに直接入力されます。agent間通知は inbox $id です。"
   else
-    tmux send-keys -t "$pane" C-u "AGENTS.md を読み、role=$role agent_id=$id として待機してください。通知は inbox $id です。" C-m
+    team_tmux_send_text "$pane" "AGENTS.md を読み、role=$role agent_id=$id として待機してください。通知は inbox $id です。"
   fi
 }
 
@@ -183,6 +190,9 @@ main() {
   local first=1
   while IFS='|' read -r id role cli model window worktree command; do
     [[ -n "$id" ]] || continue
+    if [[ "$lead_only" -eq 1 && "$role" != "lead" ]]; then
+      continue
+    fi
     [[ -n "$window" ]] || window="$id"
     [[ -n "$worktree" ]] || worktree="."
     [[ -n "$command" ]] || die "agent $id has no command"
@@ -209,7 +219,8 @@ main() {
     pane="$(tmux display-message -p -t "$session:$window.0" '#{pane_id}')"
     set_pane_metadata "$pane" "$id" "$role" "$model" "$worktree"
     write_agent_state "$id" "$role" "$cli" "$model" "$window" "$worktree" "$command" "$pane" "$session"
-    send_boot_nudge "$pane" "$id" "$role"
+    team_tmux_accept_startup_prompt "$pane" "$cli" 10
+    send_boot_nudge "$pane" "$id" "$role" "$cli"
   done < <(team_config_agents)
 
   tmux set-option -t "$session" status on >/dev/null

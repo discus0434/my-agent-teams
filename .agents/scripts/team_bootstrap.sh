@@ -17,7 +17,7 @@ done < <(team_config_agents)
 
 [[ -n "$lead_id" ]] || die "no lead agent configured in $TEAM_CONFIG_FILE"
 
-TEAM_BOOT_NUDGE=0 "$SCRIPT_DIR/team_start.sh" --restart
+TEAM_BOOT_NUDGE=0 "$SCRIPT_DIR/team_start.sh" --restart --lead-only
 
 state_file="$TEAM_STATE_DIR/agents/$lead_id.env"
 [[ -f "$state_file" ]] || die "no pane state for lead agent: $lead_id"
@@ -25,7 +25,7 @@ state_file="$TEAM_STATE_DIR/agents/$lead_id.env"
 # shellcheck disable=SC1090
 source "$state_file"
 
-if [[ -z "${pane:-}" || -z "${session:-}" ]]; then
+if [[ -z "${pane:-}" || -z "${session:-}" || -z "${cli:-}" ]]; then
   die "pane state for lead agent is incomplete: $lead_id"
 fi
 
@@ -35,11 +35,10 @@ if ! tmux has-session -t "$session" 2>/dev/null; then
   die "tmux session is not running: $session"
 fi
 
-sleep 1
-
 prompt="team-bootstrap を開始してください。role=lead agent_id=$lead_id として AGENTS.md に従い、まだ実装や worker dispatch は行わず、まずこの pane のユーザーに、新しいプロジェクトの初期化に必要な最小限の質問をしてください。確認する項目は、何を作るか、使用言語/runtime、deliverable、最初の user-visible behavior、make smoke で確認する動作です。"
 
-tmux send-keys -t "$pane" C-u "$prompt" C-m
+team_tmux_wait_for_ready "$pane" "$cli" 30
+team_tmux_send_text "$pane" "$prompt"
 
 echo "started bootstrap in tmux session: $session"
 echo "attach with: tmux attach -t $session"
