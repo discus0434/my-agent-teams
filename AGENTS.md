@@ -21,6 +21,12 @@ Read before task work:
 2. `docs/MEMORY.md`
 3. `queue/tasks/<task_id>.md`
 
+## Tooling
+
+- Use `gh` for GitHub operations such as PR creation, PR status, issue comments, review comments, and CI inspection.
+- When repository environment variables must be loaded, run commands through `direnv exec . <command>`.
+- Do not add fallback command paths for missing required tools. Fail fast and report the missing command.
+
 ## Roles
 
 ### lead

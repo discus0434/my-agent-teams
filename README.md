@@ -4,16 +4,66 @@ tmux、file mailbox、repo 外 worktree を使う agent team template です。
 
 Lead は小さい変更を直接行い、大きい変更を task に切って worker に渡します。worker は task branch で実装、検証、review 対応、report 更新まで行い、lead が最後に merge します。
 
+## Install
+
+### macOS (Homebrew)
+
+<details><summary>コマンド</summary>
+
+```bash
+brew install gh ripgrep fd bat jq yq git-delta direnv tmux pnpm node python
+brew install --cask codex
+npm install -g @anthropic-ai/claude-code
+```
+
+</details>
+
+### Linux (Debian/Ubuntu)
+
+<details><summary>コマンド</summary>
+
+```bash
+npm install -g @openai/codex @anthropic-ai/claude-code
+wget -qO- https://get.pnpm.io/install.sh | sh -
+
+# GitHub CLI (official apt repository)
+type -p wget >/dev/null || (sudo apt update && sudo apt install -y wget)
+sudo mkdir -p -m 755 /etc/apt/keyrings
+out=$(mktemp) && wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg
+cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+sudo mkdir -p -m 755 /etc/apt/sources.list.d
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+sudo apt update
+sudo apt-get install -y gh ripgrep fd-find bat jq direnv tmux python3 nodejs npm
+command -v fd >/dev/null || sudo ln -s /usr/bin/fdfind /usr/local/bin/fd
+command -v bat >/dev/null || sudo ln -s /usr/bin/batcat /usr/local/bin/bat
+```
+
+</details>
+
+### direnv
+
+```bash
+direnv allow
+```
+
+shell hook が未設定の場合は、利用している shell の rc file に追加します。
+
+```bash
+eval "$(direnv hook zsh)"
+```
+
 ## Bootstrap
 
 Lead agent で `team-bootstrap` skill を使い、構築対象と stack を決めます。
 
-- Python: `uv` / `ruff` / `pytest`
-- TypeScript: `pnpm` / `biome` / `vitest`
+- stack に応じた package manager / formatter / linter / test runner / build command
+- Python example: `uv` / `ruff` / `pytest`
+- TypeScript example: `pnpm` / `biome` / `vitest`
 - checks: `make post-change`
 - runtime smoke: `make smoke`
 
-選ばなかった scaffold や互換 path は残しません。
 bootstrap 完了後は `.codex/skills/team-bootstrap/` を削除します。
 
 初期化後、worker worktree を作る前に commit します。

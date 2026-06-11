@@ -27,13 +27,16 @@ Ask only blocking questions.
 ## Contract
 
 - `make post-change` は worker が code change 後に実行する 1 command。
-- `make post-change` は format、lint、必要な package/build check、test、`git diff --check -- .` を含める。
+- 対象 stack の標準的な package manager、formatter、linter、test runner、必要な build/package command を入れて初期化する。
+- `make post-change` は format、lint、必要な type/package/build check、test、`git diff --check -- .` を含める。
 - 既存の repo-level checks がある場合は `post-change` に残す。
 - `make smoke` は runtime smoke または agent-team smoke に使う。language checks だけを `smoke` に置かない。
 - 選ばなかった言語や未使用 scaffold は残さない。
 - `AGENTS.md` には選んだ stack の command だけを書く。
 - 必要な package manager lockfile を作る。
 - 必須 tool が無い場合は失敗させる。silent fallback を作らない。
+
+Python and TypeScript below are examples of this rule, not the only supported stacks.
 
 ## Python
 
@@ -118,9 +121,21 @@ For a package/app build contract, add `$(PNPM) -s build` to `post-change-ts`.
 
 ## Other Stack
 
-- package manager、formatter、linter、test runner、package/build command を明示する。
-- `make post-change` に全 check を入れる。
+- Choose the stack's normal package manager, formatter, linter, test runner, and build/package command.
+- Initialize real project metadata, dependency files, source layout, tests, and lockfiles for that stack.
+- Wire the selected tools into `make post-change`.
+- Put only runtime or end-to-end smoke in `make smoke`.
+- Update `AGENTS.md` and `README.md` with the actual selected commands.
+- Do not leave Python or TypeScript examples in the bootstrapped repo unless that stack was selected.
 - 必須 command が無い場合は失敗させる。
+
+Examples:
+
+- Rust: `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`, and `cargo build` when needed.
+- Go: `gofmt`, `go vet ./...`, `go test ./...`, and `go build ./...` when needed.
+- Ruby: `bundle`, `rubocop`, `rspec` or `minitest`, and gem/package build when needed.
+- Java/Kotlin: Gradle or Maven wrapper, formatter/linter if selected, test, and build/package tasks.
+- Swift: SwiftPM or Xcode build tooling, formatter/linter if selected, tests, and build.
 
 ## Multi-package
 
