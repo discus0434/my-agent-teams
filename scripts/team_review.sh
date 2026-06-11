@@ -30,7 +30,10 @@ review_model="$(team_config_review_field model)" || die "team.review.model is mi
 review_effort="$(team_config_review_field effort)" || die "team.review.effort is missing in $TEAM_CONFIG_FILE"
 review_output_dir="$(team_config_review_field output_dir)" || die "team.review.output_dir is missing in $TEAM_CONFIG_FILE"
 
-[[ "$review_cli" == "claude" ]] || die "unsupported team.review.cli: $review_cli"
+case "$review_cli" in
+  claude|codex) ;;
+  *) die "unsupported team.review.cli: $review_cli" ;;
+esac
 require_command "$review_cli"
 
 ensure_team_dirs
@@ -69,7 +72,7 @@ output_dir="$(abs_path "$review_output_dir")"
 mkdir -p "$output_dir"
 
 summary_file="$output_dir/${task_id}_${worker_id}_review.md"
-raw_file="$output_dir/${task_id}_${worker_id}_review_claude.txt"
+raw_file="$output_dir/${task_id}_${worker_id}_review_${review_cli}.txt"
 prompt_file="$output_dir/${task_id}_${worker_id}_review_prompt.txt"
 status_file="$output_dir/${task_id}_${worker_id}_git_status.txt"
 committed_diff_file="$output_dir/${task_id}_${worker_id}_committed_diff.patch"
@@ -124,24 +127,44 @@ PROMPT
 
 status=0
 prompt="$(<"$prompt_file")"
-cmd=(
-  "$review_cli"
-  --print
-  --model "$review_model"
-  --permission-mode bypassPermissions
-  --output-format text
-  --add-dir "$TEAM_ROOT"
-  --add-dir "$abs_worktree"
-  "$prompt"
-)
-(
-  cd "$abs_worktree"
-  CLAUDE_CODE_EFFORT_LEVEL="$review_effort" "${cmd[@]}"
-) > "$raw_file" 2> "$exec_log" || status=$?
+case "$review_cli" in
+  claude)
+    cmd=(
+      claude
+      --print
+      --model "$review_model"
+      --permission-mode bypassPermissions
+      --output-format text
+      --add-dir "$TEAM_ROOT"
+      --add-dir "$abs_worktree"
+      "$prompt"
+    )
+    (
+      cd "$abs_worktree"
+      CLAUDE_CODE_EFFORT_LEVEL="$review_effort" "${cmd[@]}"
+    ) > "$raw_file" 2> "$exec_log" || status=$?
+    ;;
+  codex)
+    cmd=(
+      codex
+      exec
+      --model "$review_model"
+      --dangerously-bypass-approvals-and-sandbox
+      --cd "$abs_worktree"
+      --add-dir "$TEAM_ROOT"
+      -c "model_reasoning_effort=\"$review_effort\""
+      --output-last-message "$raw_file"
+      "$prompt"
+    )
+    "${cmd[@]}" > "$exec_log" 2>&1 || status=$?
+    ;;
+esac
 
 if [[ "$status" -ne 0 ]]; then
   die "review failed with exit status $status. See $exec_log"
 fi
+
+[[ -s "$raw_file" ]] || die "review did not write output: $raw_file"
 
 {
   echo "# Review: $task_id by $worker_id"

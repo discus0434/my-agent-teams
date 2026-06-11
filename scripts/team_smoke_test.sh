@@ -28,6 +28,7 @@ smoke:
 MAKE
 
 perl -0pi -e 's#\.\./my-agent-teams-worktrees/#../worktrees/#g' "$TMP_ROOT/config/agent-team.yaml"
+perl -0pi -e 's/(  review:\n    cli: )claude/${1}codex/; s/(  review:\n    cli: codex\n    model: )claude-opus-4-8/${1}gpt-5/' "$TMP_ROOT/config/agent-team.yaml"
 mkdir -p "$TMP_BASE/bin"
 
 git -C "$TMP_ROOT" init -q
@@ -36,15 +37,38 @@ git -C "$TMP_ROOT" config user.name "Agent Team Smoke"
 git -C "$TMP_ROOT" add .
 git -C "$TMP_ROOT" commit -qm "Initial template"
 
-cat > "$TMP_BASE/bin/claude" <<'SH'
+cat > "$TMP_BASE/bin/codex" <<'SH'
 #!/usr/bin/env bash
-printf '%s\n\n' 'Decision: OK'
-printf '%s\n\n' '## Findings'
-printf '%s\n\n' '## Verification Gaps'
-printf '%s\n\n' '## Notes'
-printf '%s\n' 'stub review'
+if [[ "$1" != "exec" ]]; then
+  printf 'unexpected codex command: %s\n' "$*" >&2
+  exit 2
+fi
+
+output=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output-last-message|-o)
+      [[ $# -ge 2 ]] || exit 2
+      output="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+[[ -n "$output" ]] || { echo "missing --output-last-message" >&2; exit 2; }
+{
+  printf '%s\n\n' 'Decision: OK'
+  printf '%s\n\n' '## Findings'
+  printf '%s\n\n' '## Verification Gaps'
+  printf '%s\n\n' '## Notes'
+  printf '%s\n' 'stub review'
+} > "$output"
+printf '%s\n' "codex exec stub"
 SH
-chmod +x "$TMP_BASE/bin/claude"
+chmod +x "$TMP_BASE/bin/codex"
 
 cat > "$TMP_BASE/bin/tmux" <<'SH'
 #!/usr/bin/env bash

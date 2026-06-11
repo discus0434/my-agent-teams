@@ -114,6 +114,11 @@ Review handling:
 
 Review refuses dirty worker worktrees. The review target is the committed diff from task base commit to worker head.
 
+`team.review.cli` supports:
+
+- `claude`: runs `claude --print`.
+- `codex`: runs `codex exec` and writes the final response to the review artifact.
+
 ## Integration
 
 Lead integrates only tasks shown by `make team-status` as `ready-to-integrate`.
