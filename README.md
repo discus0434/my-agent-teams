@@ -71,7 +71,7 @@ make team-bootstrap
 tmux attach -t agent-team
 ```
 
-`lead` pane が bootstrap を開始し、何を作るかを最初の1問として聞きます。
+`make team-bootstrap` は `agent-team` tmux session を lead-only で作ります。attach すると `lead` pane が bootstrap を開始し、何を作るかを最初の1問として聞きます。
 
 4. lead の質問に答える。
 
@@ -86,6 +86,8 @@ lead の質問に答えると、次のものがプロジェクト用に初期化
 - README、AGENTS、package metadata、entrypoints
 
 5. bootstrap 結果を commit する。
+
+bootstrap が終わったら tmux から detach して、repository root の shell で実行します。tmux の detach は `Ctrl-b` の後に `d` です。
 
 ```bash
 make post-change
@@ -102,7 +104,7 @@ tmux attach -t agent-team
 ```
 
 worker worktree は `../<repo-directory>-worktrees/<agent_id>` に作られます。repo 内に worktree は置きません。
-`make team-bootstrap` は `lead` だけを起動します。`make team-start` は、bootstrap 結果の commit 後に worker も含めて起動します。
+`make team-start` は既存の `agent-team` tmux session を作り直し、bootstrap 結果の commit 後に worker も含めて起動します。
 
 ## Configure Agents
 
