@@ -22,7 +22,7 @@ description: Use by a lead agent when .agents/queue/memory_proposals contains pr
 ## Process
 
 ```bash
-./scripts/team_memory_update.sh list
+make memory-list
 ```
 
 1. proposal を読む。
@@ -31,5 +31,5 @@ description: Use by a lead agent when .agents/queue/memory_proposals contains pr
 4. 必要なら proposal file に対応済みであることを report に残す。
 
 ```bash
-./scripts/team_memory_update.sh append <proposal_file>
+make memory-append PROPOSAL=<proposal_file>
 ```

@@ -2,15 +2,15 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 TMP_BASE="$(mktemp -d)"
 TMP_ROOT="$TMP_BASE/repo"
 TMP_CONFIG_FILE="$TMP_ROOT/.agents/config/agent-team.yaml"
 trap 'rm -rf "$TMP_BASE"' EXIT
 
 mkdir -p "$TMP_ROOT"
-cp -R "$ROOT/scripts" "$TMP_ROOT/scripts"
 mkdir -p "$TMP_ROOT/.agents"
+cp -R "$ROOT/.agents/scripts" "$TMP_ROOT/.agents/scripts"
 cp -R "$ROOT/.agents/config" "$TMP_ROOT/.agents/config"
 cp -R "$ROOT/.agents/docs" "$TMP_ROOT/.agents/docs"
 cp "$ROOT/.gitignore" "$TMP_ROOT/.gitignore"
@@ -31,7 +31,7 @@ cat > "$TMP_ROOT/Makefile" <<'MAKE'
 .PHONY: post-change smoke
 
 post-change:
-	@bash -n scripts/*.sh
+	@bash -n .agents/scripts/*.sh
 	@git diff --check -- .
 
 smoke:
@@ -115,9 +115,9 @@ esac
 SH
 chmod +x "$TMP_BASE/bin/tmux"
 
-TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_config.sh" session >/dev/null
-TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_config.sh" agent worker-1 >/dev/null
-TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_config.sh" review-field model >/dev/null
+TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" session >/dev/null
+TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" agent worker-1 >/dev/null
+TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" review-field model >/dev/null
 
 identity="$(
   TEAM_ROOT="$TMP_ROOT" \
@@ -128,7 +128,7 @@ identity="$(
   TEAM_AGENT_MODEL=gpt-5.5 \
   TEAM_AGENT_WORKTREE=../worktrees/worker-1 \
   TEAM_SESSION=agent-team \
-  "$TMP_ROOT/scripts/team_identity.sh"
+  "$TMP_ROOT/.agents/scripts/team_identity.sh"
 )"
 case "$identity" in
   *"agent_id=worker-1"*) ;;
@@ -141,7 +141,7 @@ esac
 
 export TEAM_FAKE_TMUX_LOG="$TMP_BASE/tmux.log"
 team_start_log="$TMP_BASE/team_start.log"
-if ! PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/scripts/team_start.sh" --restart > "$team_start_log" 2>&1; then
+if ! PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_BOOT_NUDGE_DELAY=0 "$TMP_ROOT/.agents/scripts/team_start.sh" --restart > "$team_start_log" 2>&1; then
   cat "$team_start_log" >&2
   exit 1
 fi
@@ -153,17 +153,36 @@ case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *"TEAM_AGENT_ID=worker-1"*"TEAM_AGENT_ROLE=worker"*"TEAM_AGENT_MODEL="*) ;;
   *) echo "worker launch env was not passed" >&2; exit 1 ;;
 esac
-if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_config.sh" agent verifier >/dev/null 2>&1; then
+case "$(<"$TEAM_FAKE_TMUX_LOG")" in
+  *"send-keys"*"AGENTS.md"*"C-m"*) ;;
+  *) echo "boot nudge was not submitted with C-m" >&2; exit 1 ;;
+esac
+if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_config.sh" agent verifier >/dev/null 2>&1; then
   echo "verifier must not be a tmux agent" >&2
   exit 1
 fi
+
+: > "$TEAM_FAKE_TMUX_LOG"
+team_bootstrap_log="$TMP_BASE/team_bootstrap.log"
+if ! PATH="$TMP_BASE/bin:$PATH" \
+  TEAM_ROOT="$TMP_ROOT" \
+  TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" \
+  TEAM_FAKE_TMUX_HAS_SESSION=1 \
+  "$TMP_ROOT/.agents/scripts/team_bootstrap.sh" > "$team_bootstrap_log" 2>&1; then
+  cat "$team_bootstrap_log" >&2
+  exit 1
+fi
+case "$(<"$TEAM_FAKE_TMUX_LOG")" in
+  *"send-keys"*"team-bootstrap"*"何を作るか"*"C-m"*) ;;
+  *) echo "bootstrap prompt was not sent to lead" >&2; exit 1 ;;
+esac
 
 : > "$TEAM_FAKE_TMUX_LOG"
 PATH="$TMP_BASE/bin:$PATH" \
   TEAM_ROOT="$TMP_ROOT" \
   TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" \
   TEAM_FAKE_TMUX_HAS_SESSION=1 \
-  "$TMP_ROOT/scripts/team_nudge.sh" worker-1
+  "$TMP_ROOT/.agents/scripts/team_nudge.sh" worker-1
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *"send-keys"*"inbox worker-1"*"C-m"*) ;;
   *) echo "nudge did not submit inbox with C-m" >&2; exit 1 ;;
@@ -174,7 +193,7 @@ PATH="$TMP_BASE/bin:$PATH" \
   TEAM_ROOT="$TMP_ROOT" \
   TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" \
   TEAM_FAKE_TMUX_HAS_SESSION=1 \
-  "$TMP_ROOT/scripts/team_submit.sh" worker-1
+  "$TMP_ROOT/.agents/scripts/team_submit.sh" worker-1
 case "$(<"$TEAM_FAKE_TMUX_LOG")" in
   *"send-keys"*"C-m"*) ;;
   *) echo "team_submit did not send C-m" >&2; exit 1 ;;
@@ -188,7 +207,7 @@ printf '%s\n' "root update" > "$TMP_ROOT/root-update.txt"
 git -C "$TMP_ROOT" add root-update.txt
 git -C "$TMP_ROOT" commit -qm "Root update"
 team_restart_log="$TMP_BASE/team_start_restart.log"
-if ! PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/scripts/team_start.sh" --restart > "$team_restart_log" 2>&1; then
+if ! PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_BOOT_NUDGE=0 "$TMP_ROOT/.agents/scripts/team_start.sh" --restart > "$team_restart_log" 2>&1; then
   cat "$team_restart_log" >&2
   exit 1
 fi
@@ -200,41 +219,41 @@ perl -0pi -e 's/T-XXX/T-001/g' "$TMP_ROOT/.agents/queue/tasks/T-001.md"
 
 cp "$TMP_ROOT/.agents/queue/tasks/TEMPLATE.md" "$TMP_ROOT/.agents/queue/tasks/T-BAD.md"
 perl -0pi -e 's/T-XXX/T-BAD/g; s#Branch: task/worker-1/T-BAD#Branch: task/worker-1/wrong#' "$TMP_ROOT/.agents/queue/tasks/T-BAD.md"
-if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-BAD worker-1 >/dev/null 2>&1; then
+if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_claim.sh" T-BAD worker-1 >/dev/null 2>&1; then
   echo "branch mismatch claim unexpectedly succeeded" >&2
   exit 1
 fi
 
-message_id="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/scripts/team_send.sh" worker-1 task_assigned T-001)"
+message_id="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/.agents/scripts/team_send.sh" worker-1 task_assigned T-001)"
 [[ -n "$message_id" ]]
 
-pending="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_inbox.sh" worker-1)"
+pending="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_inbox.sh" worker-1)"
 case "$pending" in
   *"$message_id"*) ;;
   *) echo "message was not visible in inbox" >&2; exit 1 ;;
 esac
 
-TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_inbox.sh" worker-1 --mark "$message_id" >/dev/null
-pending_after_mark="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_inbox.sh" worker-1)"
+TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_inbox.sh" worker-1 --mark "$message_id" >/dev/null
+pending_after_mark="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_inbox.sh" worker-1)"
 [[ -z "$pending_after_mark" ]]
 
 team_claim_log="$TMP_BASE/team_claim.log"
-if ! TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-001 worker-1 > "$team_claim_log" 2>&1; then
+if ! TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_claim.sh" T-001 worker-1 > "$team_claim_log" 2>&1; then
   cat "$team_claim_log" >&2
   exit 1
 fi
 [[ "$(git -C "$worker_1" branch --show-current)" == "task/worker-1/T-001" ]]
 task_base_commit="$(git -C "$worker_1" rev-parse HEAD)"
-if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_claim.sh" T-001 worker-2 >/dev/null 2>&1; then
+if TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_claim.sh" T-001 worker-2 >/dev/null 2>&1; then
   echo "second claim unexpectedly succeeded" >&2
   exit 1
 fi
 
 printf '%s\n' "worker change" > "$worker_1/integration-smoke.txt"
-report_file="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_report.sh" T-001 worker-1 needs-review)"
+report_file="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_report.sh" T-001 worker-1 needs-review)"
 [[ -f "$report_file" ]]
 grep -q '^- Result: not run by worker$' "$report_file"
-if PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/scripts/team_review.sh" T-001 worker-1 >/dev/null 2>&1; then
+if PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/.agents/scripts/team_review.sh" T-001 worker-1 >/dev/null 2>&1; then
   echo "dirty worktree review unexpectedly succeeded" >&2
   exit 1
 fi
@@ -242,10 +261,10 @@ fi
 git -C "$worker_1" add integration-smoke.txt
 git -C "$worker_1" commit -qm "Implement T-001"
 task_head_commit="$(git -C "$worker_1" rev-parse HEAD)"
-report_file="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_report.sh" T-001 worker-1 needs-review)"
+report_file="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_report.sh" T-001 worker-1 needs-review)"
 grep -q '^Branch: task/worker-1/T-001$' "$report_file"
 grep -q '^Head commit: ' "$report_file"
-if PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/scripts/team_review.sh" T-001 worker-1 >/dev/null 2>&1; then
+if PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/.agents/scripts/team_review.sh" T-001 worker-1 >/dev/null 2>&1; then
   echo "placeholder report review unexpectedly succeeded" >&2
   exit 1
 fi
@@ -311,40 +330,40 @@ Integration: none
 - None.
 REPORT
 
-review_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/scripts/team_review.sh" T-001 worker-1)"
+review_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" TEAM_DISABLE_NUDGE=1 "$TMP_ROOT/.agents/scripts/team_review.sh" T-001 worker-1)"
 [[ -f "$review_file" ]]
 case "$review_file" in
   "$TMP_ROOT/.agents/queue/reviews/T-001_worker-1_review.md") ;;
   *) echo "unexpected review path: $review_file" >&2; exit 1 ;;
 esac
 
-review_message="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_inbox.sh" worker-1)"
+review_message="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_inbox.sh" worker-1)"
 case "$review_message" in
   *"\"type\":\"review\""*) ;;
   *) echo "review message was not returned to worker" >&2; exit 1 ;;
 esac
 
-report_file="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_report.sh" T-001 worker-1 done)"
-status_output="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_status.sh")"
+report_file="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_report.sh" T-001 worker-1 done)"
+status_output="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_status.sh")"
 case "$status_output" in
   *"T-001 owner=worker-1 phase=ready-to-integrate"*) ;;
   *) echo "status did not show ready-to-integrate" >&2; exit 1 ;;
 esac
 
-integration_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_integrate.sh" T-001 worker-1)"
+integration_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_integrate.sh" T-001 worker-1)"
 [[ -f "$integration_file" ]]
 grep -q '^Status: integrated$' "$integration_file"
 [[ -f "$TMP_ROOT/integration-smoke.txt" ]]
 first_merge_commit="$(sed -n 's/^Merge commit: //p' "$integration_file")"
 [[ -n "$first_merge_commit" ]]
 
-rerun_integration_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_integrate.sh" T-001 worker-1)"
+rerun_integration_file="$(PATH="$TMP_BASE/bin:$PATH" TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_integrate.sh" T-001 worker-1)"
 [[ "$rerun_integration_file" == "$integration_file" ]]
 grep -q '^Status: integrated$' "$integration_file"
 grep -q "^Merge commit: $first_merge_commit$" "$integration_file"
 grep -q '^Already integrated: task/worker-1/T-001$' "$TMP_ROOT/.agents/queue/integrations/T-001_worker-1_merge.log"
 
-integrated_status="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/scripts/team_status.sh")"
+integrated_status="$(TEAM_ROOT="$TMP_ROOT" TEAM_CONFIG_FILE="$TMP_CONFIG_FILE" "$TMP_ROOT/.agents/scripts/team_status.sh")"
 case "$integrated_status" in
   *"T-001 owner=worker-1 phase=integrated"*) ;;
   *) echo "status did not show integrated" >&2; exit 1 ;;

@@ -42,4 +42,4 @@ if [[ -n "${TMUX_PANE:-}" ]] && command -v tmux >/dev/null 2>&1; then
   exit 0
 fi
 
-die "agent identity is unavailable; start this process with scripts/team_start.sh"
+die "agent identity is unavailable; start this process with make team-start"

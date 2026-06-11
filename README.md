@@ -26,11 +26,11 @@ fi
 grep -Fqx "$hook" "$rc" 2>/dev/null || printf '\n%s\n' "$hook" >> "$rc"
 direnv allow
 make post-change
-make team-start
+make team-bootstrap
 tmux attach -t agent-team
 ```
 
-`lead` pane にプロジェクトの依頼を直接入力してください。
+attach すると `lead` pane が bootstrap を開始し、何を作るか質問します。
 
 worker worktree は `../my-agent-teams-worktrees/<agent_id>` に作られます。repo 内に worktree は置きません。
 
@@ -75,11 +75,9 @@ eval "$(direnv hook zsh)"
 direnv allow
 ```
 
-## Bootstrap A Project
+## Bootstrap
 
-新しいプロジェクトとして使い始めるときは、lead agent に構築したいものを伝えて `team-bootstrap` skill で初期化します。
-
-bootstrap で決めるもの:
+Quick Start は `lead` pane で bootstrap を開始します。lead の質問に答えると、次のものがプロジェクト用に初期化されます。
 
 - 何を作るか
 - 使用言語と package manager
@@ -89,7 +87,7 @@ bootstrap で決めるもの:
 - `make smoke` で確認する代表的な利用者向け動作
 - README、AGENTS、package metadata、entrypoints
 
-初期化後、worker worktree を作る前に一度 commit します。
+初期化後、worker worktree を使い始める前に一度 commit します。
 
 ```bash
 make post-change
@@ -189,7 +187,7 @@ make post-change
 make harness-test
 ```
 
-Harness tests live in `tests/harness/`.
+Harness tests live in `.agents/tests/harness/`.
 
 ## Important Files
 
@@ -205,6 +203,6 @@ Harness tests live in `tests/harness/`.
 - `.agents/queue/reports/`: worker reports
 - `.agents/queue/reviews/`: verifier reviews
 - `.agents/queue/integrations/`: lead integration logs
-- `scripts/`: harness commands
-- `tests/harness/`: harness tests
+- `.agents/scripts/`: harness commands
+- `.agents/tests/harness/`: harness tests
 - `Makefile`: 操作用 entrypoints

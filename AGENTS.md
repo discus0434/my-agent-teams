@@ -3,7 +3,7 @@
 ## Identify
 
 ```bash
-./scripts/team_identity.sh
+make team-identity
 ```
 
 Primary identity:
@@ -21,7 +21,7 @@ Read before task work:
 2. `.agents/docs/MEMORY.md`
 3. `$TEAM_ROOT/.agents/queue/tasks/<task_id>.md`
 
-Queue, inbox, report, review, and integration artifacts live under `TEAM_ROOT`. In a worker worktree, use the helper scripts or absolute paths from messages instead of treating the local `.agents/queue/` directory as canonical.
+Queue, inbox, report, review, and integration artifacts live under `TEAM_ROOT`. In a worker worktree, use the Make targets or absolute paths from messages instead of treating the local `.agents/queue/` directory as canonical.
 
 ## Tooling
 
@@ -78,7 +78,7 @@ Direct lightweight requests without a task file, such as `TYPE=retro` or `TYPE=n
 
 ### verifier
 
-- Runs only through `scripts/team_review.sh`.
+- Runs only through `make review`.
 - Reviews task, report, committed diff, and verification evidence.
 - Returns `Decision: OK`, `Decision: FIX`, or `Decision: ASK_LEAD`.
 - Does not edit files or own a worktree.

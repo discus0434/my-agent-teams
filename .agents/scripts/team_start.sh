@@ -135,9 +135,9 @@ send_boot_nudge() {
 
   sleep "${TEAM_BOOT_NUDGE_DELAY:-1}"
   if [[ "$role" == "lead" ]]; then
-    tmux send-keys -t "$pane" "AGENTS.md を読み、role=lead agent_id=$id として待機してください。ユーザー指示はこのpaneに直接入力されます。agent間通知は inbox $id です。" Enter
+    tmux send-keys -t "$pane" C-u "AGENTS.md を読み、role=lead agent_id=$id として待機してください。ユーザー指示はこのpaneに直接入力されます。agent間通知は inbox $id です。" C-m
   else
-    tmux send-keys -t "$pane" "AGENTS.md を読み、role=$role agent_id=$id として待機してください。通知は inbox $id です。" Enter
+    tmux send-keys -t "$pane" C-u "AGENTS.md を読み、role=$role agent_id=$id として待機してください。通知は inbox $id です。" C-m
   fi
 }
 

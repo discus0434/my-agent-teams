@@ -1,8 +1,8 @@
-.PHONY: post-change smoke harness-test team-start team-stop team-status team-send team-submit inbox claim report review integrate
+.PHONY: post-change smoke harness-test team-identity team-bootstrap team-start team-stop team-status team-send team-submit inbox claim report review integrate memory-list memory-append
 
 post-change:
-	@bash -n scripts/*.sh
-	@bash -n tests/harness/*.sh
+	@bash -n .agents/scripts/*.sh
+	@bash -n .agents/tests/harness/*.sh
 	@git diff --check -- .
 
 smoke:
@@ -10,51 +10,64 @@ smoke:
 	@exit 1
 
 harness-test:
-	./tests/harness/team_lifecycle_test.sh
+	./.agents/tests/harness/team_lifecycle_test.sh
+
+team-identity:
+	./.agents/scripts/team_identity.sh
+
+team-bootstrap:
+	./.agents/scripts/team_bootstrap.sh
 
 team-start:
-	./scripts/team_start.sh --restart
+	./.agents/scripts/team_start.sh --restart
 
 team-stop:
-	./scripts/team_stop.sh
+	./.agents/scripts/team_stop.sh
 
 team-status:
-	./scripts/team_status.sh
+	./.agents/scripts/team_status.sh
 
 team-send:
 	@test -n "$(TO)" || { echo "TO is required" >&2; exit 2; }
 	@test -n "$(TYPE)" || { echo "TYPE is required" >&2; exit 2; }
-	./scripts/team_send.sh "$(TO)" "$(TYPE)" "$(TASK)" "$(BODY)"
+	./.agents/scripts/team_send.sh "$(TO)" "$(TYPE)" "$(TASK)" "$(BODY)"
 
 team-submit:
 	@test -n "$(AGENT)" || { echo "AGENT is required" >&2; exit 2; }
-	./scripts/team_submit.sh "$(AGENT)"
+	./.agents/scripts/team_submit.sh "$(AGENT)"
 
 inbox:
 	@test -n "$(AGENT)" || { echo "AGENT is required" >&2; exit 2; }
 	@if [ -n "$(MARK)" ]; then \
-		./scripts/team_inbox.sh "$(AGENT)" --mark "$(MARK)"; \
+		./.agents/scripts/team_inbox.sh "$(AGENT)" --mark "$(MARK)"; \
 	else \
-		./scripts/team_inbox.sh "$(AGENT)"; \
+		./.agents/scripts/team_inbox.sh "$(AGENT)"; \
 	fi
 
 claim:
 	@test -n "$(TASK)" || { echo "TASK is required" >&2; exit 2; }
 	@test -n "$(AGENT)" || { echo "AGENT is required" >&2; exit 2; }
-	./scripts/team_claim.sh "$(TASK)" "$(AGENT)"
+	./.agents/scripts/team_claim.sh "$(TASK)" "$(AGENT)"
 
 report:
 	@test -n "$(TASK)" || { echo "TASK is required" >&2; exit 2; }
 	@test -n "$(AGENT)" || { echo "AGENT is required" >&2; exit 2; }
 	@test -n "$(STATUS)" || { echo "STATUS is required" >&2; exit 2; }
-	./scripts/team_report.sh "$(TASK)" "$(AGENT)" "$(STATUS)"
+	./.agents/scripts/team_report.sh "$(TASK)" "$(AGENT)" "$(STATUS)"
 
 review:
 	@test -n "$(TASK)" || { echo "TASK is required" >&2; exit 2; }
 	@test -n "$(AGENT)" || { echo "AGENT is required" >&2; exit 2; }
-	./scripts/team_review.sh "$(TASK)" "$(AGENT)"
+	./.agents/scripts/team_review.sh "$(TASK)" "$(AGENT)"
 
 integrate:
 	@test -n "$(TASK)" || { echo "TASK is required" >&2; exit 2; }
 	@test -n "$(AGENT)" || { echo "AGENT is required" >&2; exit 2; }
-	./scripts/team_integrate.sh "$(TASK)" "$(AGENT)"
+	./.agents/scripts/team_integrate.sh "$(TASK)" "$(AGENT)"
+
+memory-list:
+	./.agents/scripts/team_memory_update.sh list
+
+memory-append:
+	@test -n "$(PROPOSAL)" || { echo "PROPOSAL is required" >&2; exit 2; }
+	./.agents/scripts/team_memory_update.sh append "$(PROPOSAL)"

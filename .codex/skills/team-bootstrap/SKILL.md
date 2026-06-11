@@ -160,7 +160,6 @@ Examples:
 
 ```make
 post-change: post-change-py post-change-ts
-	@bash -n scripts/*.sh
 	@git diff --check -- .
 ```
 

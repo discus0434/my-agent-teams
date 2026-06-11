@@ -50,10 +50,10 @@ Use mailbox plus tmux nudge for:
 
 ## Identity
 
-`team_start.sh` passes identity through environment variables and tmux pane metadata.
+`make team-start` passes identity through environment variables and tmux pane metadata.
 
 ```bash
-./scripts/team_identity.sh
+make team-identity
 ```
 
 Expected fields:
