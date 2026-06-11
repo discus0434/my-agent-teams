@@ -1,32 +1,50 @@
 # my-agent-teams
 
-tmux、file mailbox、repo 外 worktree を使う agent team template です。
+Claude Code と Codex を混ぜて、ローカルの tmux 上で lead / worker チームを動かすためのテンプレートです。
 
-Lead は小さい変更を直接行い、大きい変更を task に切って worker に渡します。worker は task branch で実装、検証、review 対応、report 更新まで行い、lead が最後に merge します。
+このリポジトリを使うと、次の流れをそのまま始められます。
+
+1. lead pane に人間が依頼する。
+2. lead が小さい変更は直接行い、大きい変更は task に分ける。
+3. worker が repo 外 worktree の task branch で実装する。
+4. worker が検証、smoke、review 対応、report 更新まで行う。
+5. lead が `make integrate` で root repository に取り込む。
+
+## Quick Start
+
+```bash
+direnv allow
+make post-change
+make smoke
+make team-start
+tmux attach -t agent-team
+```
+
+`lead` pane にプロジェクトの依頼を直接入力してください。
+
+worker worktree は `../my-agent-teams-worktrees/<agent_id>` に作られます。repo 内に worktree は置きません。
 
 ## Install
 
-### macOS (Homebrew)
-
-<details><summary>コマンド</summary>
+### macOS
 
 ```bash
-brew install gh ripgrep fd bat jq yq git-delta direnv tmux pnpm node python
+brew install gh ripgrep fd bat jq yq git-delta direnv tmux pnpm node python uv
 brew install --cask codex
 npm install -g @anthropic-ai/claude-code
 ```
 
-</details>
-
-### Linux (Debian/Ubuntu)
-
-<details><summary>コマンド</summary>
+### Linux
 
 ```bash
 npm install -g @openai/codex @anthropic-ai/claude-code
 wget -qO- https://get.pnpm.io/install.sh | sh -
+wget -qO- https://astral.sh/uv/install.sh | sh
+```
 
-# GitHub CLI (official apt repository)
+GitHub CLI:
+
+```bash
 type -p wget >/dev/null || (sudo apt update && sudo apt install -y wget)
 sudo mkdir -p -m 755 /etc/apt/keyrings
 out=$(mktemp) && wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg
@@ -40,33 +58,27 @@ command -v fd >/dev/null || sudo ln -s /usr/bin/fdfind /usr/local/bin/fd
 command -v bat >/dev/null || sudo ln -s /usr/bin/batcat /usr/local/bin/bat
 ```
 
-</details>
-
-### direnv
-
-```bash
-direnv allow
-```
-
-shell hook が未設定の場合は、利用している shell の rc file に追加します。
+direnv shell hook:
 
 ```bash
 eval "$(direnv hook zsh)"
+direnv allow
 ```
 
-## Bootstrap
+## Bootstrap A Project
 
-Lead agent で `team-bootstrap` skill を使い、構築対象と stack を決めます。
+新しいプロジェクトとして使い始めるときは、lead agent に構築したいものを伝えて `team-bootstrap` skill で初期化します。
 
-- stack に応じた package manager / formatter / linter / test runner / build command
-- Python example: `uv` / `ruff` / `pytest`
-- TypeScript example: `pnpm` / `biome` / `vitest`
-- checks: `make post-change`
-- runtime smoke: `make smoke`
+bootstrap で決めるもの:
 
-bootstrap 完了後は `.codex/skills/team-bootstrap/` を削除します。
+- 何を作るか
+- 使用言語と package manager
+- formatter / linter / test runner
+- build command
+- `make post-change`
+- `make smoke`
 
-初期化後、worker worktree を作る前に commit します。
+初期化後、worker worktree を作る前に一度 commit します。
 
 ```bash
 make post-change
@@ -75,31 +87,31 @@ git add .
 git commit -m "Bootstrap project"
 ```
 
-## Start
+bootstrap が終わったプロジェクトでは `.codex/skills/team-bootstrap/` を削除します。
+
+## Start A Team
 
 ```bash
 make team-start
 tmux attach -t agent-team
 ```
 
-Human users type project requests directly into the `lead` pane. Agent-to-agent messages use the file mailbox and short tmux nudges.
+lead への依頼は、tmux の `lead` pane にそのまま入力します。
 
-worker worktree は `../my-agent-teams-worktrees/<agent_id>` に作られます。repo 内 `worktrees/` は使いません。
-
-If a pane shows an unsubmitted inbox prompt, submit it explicitly:
-
-```bash
-make team-submit AGENT=worker-1
-```
-
-Read and mark inbox messages through Make:
+agent 間の通知は短い `inbox <agent_id>` だけです。本文は `queue/inbox/` と `queue/tasks/` にあります。
 
 ```bash
 make inbox AGENT=worker-1
 make inbox AGENT=worker-1 MARK=<message_id>
 ```
 
-## Dispatch
+pane に `inbox <agent_id>` が入力されたまま止まっている場合:
+
+```bash
+make team-submit AGENT=worker-1
+```
+
+## Dispatch A Task
 
 ```bash
 cp queue/tasks/TEMPLATE.md queue/tasks/T-001.md
@@ -108,20 +120,14 @@ make team-send TO=worker-1 TYPE=task_assigned TASK=T-001
 make team-status
 ```
 
-Task branch は必ず次の形にします。
-
-```text
-task/<agent_id>/<task_id>
-```
-
-Example:
+task file では branch を必ずこの形にします。
 
 ```text
 Owner: worker-1
 Branch: task/worker-1/T-001
 ```
 
-## Worker Flow
+## Worker Commands
 
 ```bash
 make claim TASK=T-001 AGENT=worker-1
@@ -130,37 +136,32 @@ make smoke
 git add <changed-files>
 git commit -m "T-001: implement task"
 make report TASK=T-001 AGENT=worker-1 STATUS=needs-review
-# Edit queue/reports/T-001_worker-1.md with concrete verification evidence.
 make review TASK=T-001 AGENT=worker-1
 ```
 
-Review decision:
+review result:
 
 - `OK`: `make report TASK=T-001 AGENT=worker-1 STATUS=done`
-- `FIX`: fix, rerun checks, commit, report `needs-review`, review again
-- `ASK_LEAD`: write the question in the report and notify lead
+- `FIX`: 修正、再検証、追加 commit、再 report、再 review
+- `ASK_LEAD`: report に質問を書いて lead に相談
 
-After review, recheck inbox and mark the verifier notification when the review artifact has already been handled.
+review artifact を読んだ後、review 通知が inbox に残っていれば mark します。
+
+```bash
+make inbox AGENT=worker-1
+make inbox AGENT=worker-1 MARK=<message_id>
+```
 
 ## Integrate
 
-Lead checks tasks ready to merge:
+lead は `ready-to-integrate` の task だけを取り込みます。
 
 ```bash
 make team-status
-```
-
-Tasks with `phase=ready-to-integrate` can be merged:
-
-```bash
 make integrate TASK=T-001 AGENT=worker-1
 ```
 
-Integration performs a `--no-ff` merge, runs `make post-change` and `make smoke`, and writes:
-
-```text
-queue/integrations/T-001_worker-1.md
-```
+`make integrate` は `--no-ff` merge、`make post-change`、`make smoke` を実行し、結果を `queue/integrations/` に残します。
 
 ## Stop
 
@@ -168,25 +169,19 @@ queue/integrations/T-001_worker-1.md
 make team-stop
 ```
 
-## Shared Entrypoints
+## Important Files
 
-All CLI agents share the same rules and skills.
-
-- `CLAUDE.md` -> `AGENTS.md`
-- `.claude/skills` -> `../.codex/skills`
-- `.agents/skills` -> `../.codex/skills`
-
-## Layout
-
-- `AGENTS.md`: common agent rules
-- `.codex/skills/`: agent skills
-- `config/agent-team.yaml`: roles, commands, models, worktrees
-- `docs/TEAM_PROTOCOL.md`: mailbox, branch, review, integration protocol
-- `docs/MEMORY.md`: shared memory and update rules
+- `AGENTS.md`: 全 agent 共通の作業ルール
+- `CLAUDE.md`: `AGENTS.md` への symlink
+- `.codex/skills/`: Codex / Claude Code 共通 skill
+- `.claude/skills`: `.codex/skills` への symlink
+- `config/agent-team.yaml`: role、model、起動 command、worktree 設定
+- `docs/TEAM_PROTOCOL.md`: task、report、review、integration の詳細手順
+- `docs/MEMORY.md`: 共有 memory と更新ルール
 - `queue/tasks/`: task files
-- `queue/inbox/`: JSONL inboxes
+- `queue/inbox/`: agent inbox
 - `queue/reports/`: worker reports
 - `queue/reviews/`: verifier reviews
 - `queue/integrations/`: lead integration logs
-- `scripts/`: lifecycle commands
-- `Makefile`: common command entrypoints
+- `scripts/`: harness commands
+- `Makefile`: 操作用 entrypoints
