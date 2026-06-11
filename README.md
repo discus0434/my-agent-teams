@@ -68,7 +68,7 @@ grep -Fqx "$hook" "$rc" 2>/dev/null || printf '\n%s\n' "$hook" >> "$rc"
 make bootstrap
 ```
 
-`make bootstrap` は `direnv allow`、`make post-change`、lead-only の `agent-team` tmux session 起動、`tmux attach` まで実行します。attach すると `lead` pane が bootstrap を開始し、何を作るかを最初の1問として聞きます。
+attach すると `lead` pane が bootstrap を開始し、何を作るかを最初の1問として聞きます。
 
 4. lead の質問に答える。
 
@@ -90,10 +90,7 @@ bootstrap が終わったら tmux から detach して、repository root の she
 make bootstrap-finish
 ```
 
-`make bootstrap-finish` は `make post-change`、`make smoke`、bootstrap 専用 skill の削除、`git add -A`、`git commit -m "Bootstrap project"`、worker 込みの `agent-team` tmux session 再起動、`tmux attach` まで実行します。
-
-worker worktree は `../<repo-directory>-worktrees/<agent_id>` に作られます。repo 内に worktree は置きません。
-`make team-start` は既存の `agent-team` tmux session を作り直し、bootstrap 結果の commit 後に worker も含めて起動します。
+`make bootstrap-finish` が終わると、worker を含む `agent-team` tmux session に attach されます。
 
 ## Configure Agents
 
